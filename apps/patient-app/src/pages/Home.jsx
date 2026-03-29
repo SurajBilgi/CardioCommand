@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { clsx } from 'clsx'
 import { useVitalsWS } from '../hooks/useVitalsWS'
 import { fetchPatient } from '../services/api'
 import { DemoPanel } from '../components/demo/DemoPanel'
+import { StreakRewards } from '../components/streak/StreakRewards'
 import { PatientCallModal } from '../components/voice/PatientCallModal'
 
 const PATIENT_ID = 'john-mercer'
@@ -14,6 +15,235 @@ const REHAB_STREAK = 4
 const REHAB_WEEK = 2
 const SESSIONS_THIS_WEEK = 2
 const SESSIONS_GOAL = 3
+const BEST_STREAK = 9
+
+function buildProgramLevels(programLength, currentStreak, bestStreak) {
+  const levels = Array(programLength).fill(0)
+  const currentStart = Math.max(0, programLength - currentStreak)
+  const breakIndex = currentStart - 1
+  const previousRunLength = Math.min(bestStreak, Math.max(breakIndex, 0))
+  const previousRunStart = Math.max(0, breakIndex - previousRunLength)
+
+  for (let index = 0; index < previousRunStart; index += 1) {
+    levels[index] = [1, 3, 5].includes(index % 7) ? 2 : 0
+  }
+
+  for (let index = previousRunStart; index < breakIndex; index += 1) {
+    levels[index] = index % 2 === 0 ? 3 : 2
+  }
+
+  if (breakIndex >= 0) {
+    levels[breakIndex] = 0
+  }
+
+  for (let index = currentStart; index < programLength; index += 1) {
+    levels[index] = 4
+  }
+
+  return levels
+}
+
+function buildStreakCalendar(year, currentStreak, rehabWeek, bestStreak) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const programLength = Math.max(rehabWeek * 7, currentStreak + bestStreak + 1)
+  const rehabStart = new Date(today)
+  rehabStart.setDate(rehabStart.getDate() - (programLength - 1))
+  rehabStart.setHours(0, 0, 0, 0)
+  const programLevels = buildProgramLevels(programLength, currentStreak, bestStreak)
+
+  const firstDay = new Date(year, 0, 1)
+  const start = new Date(firstDay)
+  start.setDate(start.getDate() - start.getDay())
+
+  const days = []
+  const monthLabels = []
+  const seenMonths = new Set()
+  let cursor = new Date(start)
+  let weekIndex = 0
+
+  while (cursor <= today) {
+    const date = new Date(cursor)
+    const isInYear = date.getFullYear() === year
+    const monthKey = `${date.getFullYear()}-${date.getMonth()}`
+
+    if (isInYear && !seenMonths.has(monthKey)) {
+      monthLabels.push({
+        label: date.toLocaleDateString('en-US', { month: 'short' }),
+        weekIndex,
+      })
+      seenMonths.add(monthKey)
+    }
+
+    let level = -1
+    if (isInYear) {
+      if (date >= rehabStart && date <= today) {
+        const programIndex = Math.round((date.getTime() - rehabStart.getTime()) / 86400000)
+        level = programLevels[programIndex] ?? 0
+      }
+    }
+
+    days.push({
+      key: date.toISOString().slice(0, 10),
+      label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      level,
+      weekIndex,
+      dayIndex: date.getDay(),
+    })
+
+    cursor.setDate(cursor.getDate() + 1)
+    if (cursor.getDay() === 0) weekIndex += 1
+  }
+
+  const weekCount = weekIndex + 1
+  const weeks = Array.from({ length: weekCount }, () => Array(7).fill(null))
+
+  days.forEach(day => {
+    weeks[day.weekIndex][day.dayIndex] = day
+  })
+
+  const completedDays = days.filter(day => day.level >= 2).length
+  const activeWeeks = weeks.filter(week => week.filter(day => day?.level >= 2).length >= 4).length
+
+  return {
+    weeks,
+    monthLabels,
+    completedDays,
+    activeWeeks,
+    programStartLabel: rehabStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+  }
+}
+
+function StreakCalendarModal({ streak, onClose, calendar }) {
+  const columnWidth = 14
+  const gridWidth = calendar.weeks.length * columnWidth
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 px-4 py-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <motion.div
+        className="w-full max-w-md max-h-[calc(100vh-3rem)] overflow-y-auto rounded-[30px] border border-bg-border bg-bg-surface shadow-[0_24px_48px_rgba(44,36,32,0.22)]"
+        initial={{ y: 30, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 20, opacity: 0 }}
+        transition={{ type: 'spring', damping: 22 }}
+      >
+        <div className="px-5 pt-5 pb-5 border-b border-bg-border">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-ui text-[11px] font-semibold uppercase tracking-[0.18em] text-accent-primary/80">Recovery Streak</p>
+              <h2 className="font-display text-[30px] leading-tight text-txt-primary mt-2">{streak} days in a row</h2>
+              <p className="font-ui text-sm leading-6 text-txt-secondary mt-2">
+                A simple year view of the days you stayed on track with rehab.
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="shrink-0 px-4 py-2 rounded-full bg-bg-elevated border border-bg-border font-ui text-sm font-semibold text-txt-primary"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5 space-y-3">
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: 'Current', value: `${streak}d` },
+              { label: 'Best', value: `${BEST_STREAK}d` },
+              { label: 'Weeks On Track', value: `${calendar.activeWeeks}` },
+            ].map(stat => (
+              <div key={stat.label} className="rounded-[18px] border border-bg-border/70 bg-bg-elevated px-3 py-3 text-center">
+                <p className="font-ui text-[11px] leading-4 text-txt-muted">{stat.label}</p>
+                <p className="font-display text-xl leading-tight text-txt-primary mt-1">{stat.value}</p>
+              </div>
+            ))}
+          </div>
+
+          <StreakRewards streak={streak} />
+
+          <div className="rounded-[24px] border border-bg-border bg-bg-elevated p-4">
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <p className="font-ui text-sm font-semibold text-txt-primary">Year view</p>
+                <p className="font-ui text-xs text-txt-secondary mt-1">
+                  {calendar.completedDays} steady rehab days since {calendar.programStartLabel}.
+                </p>
+              </div>
+              <div className="shrink-0 rounded-full border border-bg-border bg-bg-surface px-3 py-1">
+                <p className="font-ui text-[11px] font-medium text-txt-secondary">{new Date().getFullYear()}</p>
+              </div>
+            </div>
+
+            <div className="rounded-[20px] border border-bg-border bg-bg-surface px-3 py-3">
+              <div className="overflow-x-auto">
+                <div className="min-w-max mx-auto" style={{ width: `${gridWidth}px` }}>
+                  <div className="relative h-5 mb-3">
+                    {calendar.monthLabels.map(label => (
+                      <span
+                        key={`${label.label}-${label.weekIndex}`}
+                        className="absolute font-ui text-[11px] text-txt-muted"
+                        style={{ left: `${label.weekIndex * columnWidth}px` }}
+                      >
+                        {label.label}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-1">
+                    {calendar.weeks.map((week, index) => (
+                      <div key={`week-${index}`} className="flex flex-col gap-1">
+                        {week.map((day, dayIndex) => {
+                          const tone = day?.level ?? -1
+                          return (
+                            <div
+                              key={day?.key || `empty-${index}-${dayIndex}`}
+                              title={day?.label}
+                              className={clsx(
+                                'w-[10px] h-[10px] rounded-[3px]',
+                                tone === -1 && 'bg-transparent',
+                                tone === 0 && 'bg-white border border-bg-border',
+                                tone === 1 && 'bg-emerald-100',
+                                tone === 2 && 'bg-emerald-300',
+                                tone === 3 && 'bg-accent-calm',
+                                tone === 4 && 'bg-emerald-700'
+                              )}
+                            />
+                          )
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-bg-border">
+                <p className="font-ui text-xs text-txt-secondary">
+                  Blank days are before rehab started.
+                </p>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="font-ui text-[11px] text-txt-muted">Less</span>
+                  {['bg-white border border-bg-border', 'bg-emerald-100', 'bg-emerald-300', 'bg-accent-calm', 'bg-emerald-700'].map(tone => (
+                    <span key={tone} className={clsx('w-3 h-3 rounded-[3px]', tone)} />
+                  ))}
+                  <span className="font-ui text-[11px] text-txt-muted">More</span>
+                </div>
+              </div>
+            </div>
+
+            <p className="font-ui text-xs leading-5 text-txt-secondary mt-3 px-1">
+              Darker squares mean stronger consistency once your rehab plan began.
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  )
+}
 
 function VitalRow({ icon, label, value, unit, note, status = 'ok' }) {
   const noteColor = status === 'warning' ? 'text-amber-600' : status === 'ok' ? 'text-accent-calm' : 'text-txt-muted'
@@ -256,6 +486,7 @@ export default function Home() {
   const [patient, setPatient] = useState(null)
   const [mood, setMood] = useState(null)
   const [showVoiceCall, setShowVoiceCall] = useState(false)
+  const [showStreakCalendar, setShowStreakCalendar] = useState(false)
   const [sessionActive, setSessionActive] = useState(false)
   const [sessionDuration, setSessionDuration] = useState(0)
   const [showCelebration, setShowCelebration] = useState(false)
@@ -309,6 +540,10 @@ export default function Home() {
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  const streakCalendar = useMemo(
+    () => buildStreakCalendar(new Date().getFullYear(), REHAB_STREAK, REHAB_WEEK, BEST_STREAK),
+    []
+  )
 
   const formatTime = (secs) => {
     const m = Math.floor(secs / 60).toString().padStart(2, '0')
@@ -366,6 +601,16 @@ export default function Home() {
       )}
     </AnimatePresence>
 
+    <AnimatePresence>
+      {showStreakCalendar && (
+        <StreakCalendarModal
+          streak={REHAB_STREAK}
+          calendar={streakCalendar}
+          onClose={() => setShowStreakCalendar(false)}
+        />
+      )}
+    </AnimatePresence>
+
     <div className="app-container pb-8">
       {/* Header */}
       <div className="bg-bg-surface px-5 pt-safe pt-8 pb-5 border-b border-bg-border">
@@ -378,10 +623,14 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-2">
             {/* Streak badge */}
-            <div className="flex flex-col items-center bg-amber-50 border border-amber-200 rounded-xl px-2.5 py-1.5">
+            <button
+              onClick={() => setShowStreakCalendar(true)}
+              className="flex flex-col items-center bg-amber-50 border border-amber-200 rounded-xl px-2.5 py-1.5 active:scale-95 transition-transform"
+              title="View recovery streak"
+            >
               <span className="text-lg leading-none">🔥</span>
               <span className="font-ui text-xs font-bold text-amber-600">{REHAB_STREAK}d</span>
-            </div>
+            </button>
             {/* Voice call button */}
             <motion.button
               onClick={() => setShowVoiceCall(true)}
