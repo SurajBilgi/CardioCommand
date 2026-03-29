@@ -6,6 +6,7 @@ import { useVitalsWS } from '../hooks/useVitalsWS'
 import { fetchPatient } from '../services/api'
 import { DemoPanel } from '../components/demo/DemoPanel'
 import { PatientCallModal } from '../components/voice/PatientCallModal'
+import WeeklyRecap from '../components/WeeklyRecap'
 
 const PATIENT_ID = 'john-mercer'
 
@@ -259,6 +260,8 @@ export default function Home() {
   const [sessionActive, setSessionActive] = useState(false)
   const [sessionDuration, setSessionDuration] = useState(0)
   const [showCelebration, setShowCelebration] = useState(false)
+  const [sessionDoneToday, setSessionDoneToday] = useState(false)
+  const [showRecap, setShowRecap] = useState(false)
   const [takenMeds, setTakenMeds] = useState(new Set([0, 1, 2])) // first 3 taken by default (demo)
   const [searchParams] = useSearchParams()
   const isDemo = searchParams.get('demo') === 'true'
@@ -323,6 +326,7 @@ export default function Home() {
 
   const handleEndSession = () => {
     setSessionActive(false)
+    setSessionDoneToday(true)
     setShowCelebration(true)
   }
 
@@ -364,6 +368,10 @@ export default function Home() {
           onTalkToCora={handleTalkToCora}
         />
       )}
+    </AnimatePresence>
+
+    <AnimatePresence>
+      {showRecap && <WeeklyRecap onClose={() => setShowRecap(false)} />}
     </AnimatePresence>
 
     <div className="app-container pb-8">
@@ -424,10 +432,61 @@ export default function Home() {
               />
             ))}
           </div>
-          <p className="text-xs font-ui text-txt-muted mt-1.5">
-            {SESSIONS_THIS_WEEK} of {SESSIONS_GOAL} sessions complete this week
-          </p>
+          <div className="flex items-center justify-between mt-1.5">
+            <p className="text-xs font-ui text-txt-muted">
+              {SESSIONS_THIS_WEEK} of {SESSIONS_GOAL} sessions this week
+            </p>
+            <button
+              onClick={() => navigate('/progress')}
+              className="font-ui text-xs text-accent-primary font-semibold"
+            >
+              See full journey →
+            </button>
+          </div>
         </div>
+
+        {/* Daily Win — 4 habits */}
+        {(() => {
+          const allMedsTaken = takenMeds.size === (patient?.medications?.length || 5)
+          const coraUsed = false // demo default
+          const habits = [
+            { icon: '🏃', label: 'Session', done: sessionDoneToday },
+            { icon: '💊', label: 'Meds',    done: allMedsTaken },
+            { icon: '😊', label: 'Mood',    done: mood !== null },
+            { icon: '💬', label: 'Cora',    done: coraUsed },
+          ]
+          const doneCount = habits.filter(h => h.done).length
+          return (
+            <div className="mt-3 bg-bg-elevated rounded-2xl px-3 py-2.5">
+              <div className="flex items-center justify-between mb-2">
+                <p className="font-ui text-xs font-semibold text-txt-secondary">Today's Daily Win</p>
+                <span className={clsx(
+                  'font-ui text-xs font-bold px-2 py-0.5 rounded-full',
+                  doneCount === 4
+                    ? 'bg-accent-calm/15 text-accent-calm'
+                    : 'bg-bg-border text-txt-muted'
+                )}>
+                  {doneCount}/4 {doneCount === 4 ? '🎉' : ''}
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {habits.map(h => (
+                  <div key={h.label} className="flex flex-col items-center gap-1">
+                    <div className={clsx(
+                      'w-9 h-9 rounded-full flex items-center justify-center text-base border-2 transition-all',
+                      h.done
+                        ? 'bg-accent-calm border-accent-calm text-white shadow-sm'
+                        : 'bg-bg-surface border-bg-border text-txt-muted'
+                    )}>
+                      {h.done ? '✓' : h.icon}
+                    </div>
+                    <span className="font-ui text-[9px] text-txt-muted">{h.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
       </div>
 
       <div className="px-4 pt-4 space-y-4">
@@ -521,6 +580,27 @@ export default function Home() {
             )}
           </div>
         </motion.div>
+
+        {/* Weekly Recap Card */}
+        <motion.button
+          onClick={() => setShowRecap(true)}
+          className="w-full text-left rounded-2xl p-4 border border-accent-warm/40 shadow-sm"
+          style={{ background: 'linear-gradient(135deg, rgba(240,160,80,0.06), rgba(240,160,80,0.14))' }}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08 }}
+          whileTap={{ scale: 0.98 }}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-display text-base text-txt-primary">Week {REHAB_WEEK} Recap Ready 📊</p>
+              <p className="font-ui text-xs text-txt-secondary mt-0.5">
+                See how your recovery is progressing · share with Sarah
+              </p>
+            </div>
+            <span className="text-xl text-txt-muted ml-2">→</span>
+          </div>
+        </motion.button>
 
         {/* Mood Card */}
         <motion.div
@@ -731,20 +811,26 @@ export default function Home() {
       </div>
 
       {/* Bottom Nav */}
-      <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-mobile bg-bg-surface border-t border-bg-border px-4 py-2 flex justify-around">
+      <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-mobile bg-bg-surface border-t border-bg-border px-2 py-2 flex justify-around">
         {[
-          { icon: '🏠', label: 'Home', path: '/' },
-          { icon: '💬', label: 'Cora', path: '/chat' },
-          { icon: '📊', label: 'My Vitals', path: '/vitals' },
-          { icon: '📋', label: 'My Plan', path: '/plan' },
+          { icon: '🏠', label: 'Home',    path: '/'         },
+          { icon: '💬', label: 'Cora',    path: '/chat'     },
+          { icon: '📊', label: 'Vitals',  path: '/vitals'   },
+          { icon: '🏆', label: 'Journey', path: '/progress' },
+          { icon: '📋', label: 'Plan',    path: '/plan'     },
         ].map(nav => (
           <button
             key={nav.path}
             onClick={() => navigate(nav.path)}
-            className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg"
+            className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg"
           >
-            <span className="text-xl">{nav.icon}</span>
-            <span className="font-ui text-xs text-txt-muted">{nav.label}</span>
+            <span className="text-lg">{nav.icon}</span>
+            <span className={clsx(
+              'font-ui text-[10px]',
+              nav.path === '/' ? 'text-accent-primary font-semibold' : 'text-txt-muted'
+            )}>
+              {nav.label}
+            </span>
           </button>
         ))}
       </nav>

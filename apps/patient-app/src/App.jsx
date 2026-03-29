@@ -3,6 +3,7 @@ import Home from './pages/Home'
 import Chat from './pages/Chat'
 import MyVitals from './pages/MyVitals'
 import RecoveryPlan from './pages/RecoveryPlan'
+import Progress from './pages/Progress'
 
 export default function App() {
   return (
@@ -11,6 +12,7 @@ export default function App() {
       <Route path="/chat" element={<Chat />} />
       <Route path="/vitals" element={<MyVitals />} />
       <Route path="/plan" element={<RecoveryPlan />} />
+      <Route path="/progress" element={<Progress />} />
     </Routes>
   )
 }

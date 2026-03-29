@@ -124,16 +124,19 @@ export default function MyVitals() {
         )}
       </div>
 
-      <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-mobile bg-bg-surface border-t border-bg-border px-4 py-2 flex justify-around">
+      <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-mobile bg-bg-surface border-t border-bg-border px-2 py-2 flex justify-around">
         {[
-          { icon: '🏠', label: 'Home', path: '/' },
-          { icon: '💬', label: 'Cora', path: '/chat' },
-          { icon: '📊', label: 'My Vitals', path: '/vitals' },
-          { icon: '📋', label: 'My Plan', path: '/plan' },
+          { icon: '🏠', label: 'Home',    path: '/'         },
+          { icon: '💬', label: 'Cora',    path: '/chat'     },
+          { icon: '📊', label: 'Vitals',  path: '/vitals'   },
+          { icon: '🏆', label: 'Journey', path: '/progress' },
+          { icon: '📋', label: 'Plan',    path: '/plan'     },
         ].map(nav => (
-          <button key={nav.path} onClick={() => navigate(nav.path)} className="flex flex-col items-center gap-0.5 px-3 py-1">
-            <span className="text-xl">{nav.icon}</span>
-            <span className="font-ui text-xs text-txt-muted">{nav.label}</span>
+          <button key={nav.path} onClick={() => navigate(nav.path)} className="flex flex-col items-center gap-0.5 px-2 py-1">
+            <span className="text-lg">{nav.icon}</span>
+            <span className={nav.path === '/vitals' ? 'font-ui text-[10px] text-accent-primary font-semibold' : 'font-ui text-[10px] text-txt-muted'}>
+              {nav.label}
+            </span>
           </button>
         ))}
       </nav>
