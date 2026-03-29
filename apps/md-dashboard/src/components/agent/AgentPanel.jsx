@@ -4,8 +4,10 @@ import { clsx } from 'clsx'
 import { Button } from '../ui/Button'
 import { Badge } from '../ui/Badge'
 import { useSSE } from '../../hooks/useSSE'
-import { runAnalysis, getPreVisitBrief } from '../../services/api'
+import { runAnalysis, getPreVisitBrief, doctorChat } from '../../services/api'
 import { VoiceCallModal } from '../voice/VoiceCallModal'
+
+const stripMd = (text) => (text || '').replace(/\*\*/g, '').replace(/\*/g, '')
 
 const ALERT_COLORS = {
   critical: 'text-red-400',
@@ -31,6 +33,12 @@ export function AgentPanel({ patient, currentVitals }) {
   const [outreachScript, setOutreachScript] = useState(null)
   const scrollRef = useRef(null)
 
+  // Doctor chat state
+  const [chatMessages, setChatMessages] = useState([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatStreaming, setChatStreaming] = useState(false)
+  const chatInputRef = useRef(null)
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
@@ -40,7 +48,62 @@ export function AgentPanel({ patient, currentVitals }) {
   const handleAnalyze = () => {
     setActiveAction('analyze')
     reset()
+    setChatMessages([])
     startStream(() => runAnalysis(patient.id, patient, currentVitals))
+  }
+
+  const handleChatSend = async () => {
+    const msg = chatInput.trim()
+    if (!msg || chatStreaming) return
+
+    const userMsg = { role: 'user', content: msg }
+    setChatMessages(prev => [...prev, userMsg])
+    setChatInput('')
+    setChatStreaming(true)
+
+    const analysisContext = {
+      risk_score: riskEvent?.score,
+      alert_level: riskEvent?.alert_level,
+      reasoning: reasoningEvent?.content,
+      summary: summaryEvent?.content,
+      action: actionEvent?.content,
+    }
+
+    try {
+      const response = await doctorChat(
+        patient, currentVitals, msg, analysisContext,
+        chatMessages.map(m => ({ role: m.role, content: m.content }))
+      )
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let assistantContent = ''
+
+      setChatMessages(prev => [...prev, { role: 'assistant', content: '' }])
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const text = decoder.decode(value)
+        const lines = text.split('\n').filter(l => l.startsWith('data: '))
+        for (const line of lines) {
+          try {
+            const data = JSON.parse(line.slice(6))
+            if (data.type === 'token') {
+              assistantContent += data.content
+              setChatMessages(prev => [
+                ...prev.slice(0, -1),
+                { role: 'assistant', content: assistantContent },
+              ])
+            }
+          } catch {}
+        }
+      }
+    } catch (e) {
+      setChatMessages(prev => [...prev, { role: 'assistant', content: 'Error: ' + e.message }])
+    } finally {
+      setChatStreaming(false)
+      setTimeout(() => chatInputRef.current?.focus(), 50)
+    }
   }
 
   const handlePreVisit = () => {
@@ -224,7 +287,7 @@ export function AgentPanel({ patient, currentVitals }) {
                 {event.type === 'reasoning' && (
                   <div className="bg-bg-elevated rounded-lg p-3 border border-bg-border">
                     <p className="text-xs font-mono text-text-muted uppercase mb-1">Clinical Analysis</p>
-                    <p className="text-xs text-text-secondary leading-relaxed">{event.content}</p>
+                    <p className="text-xs text-text-secondary leading-relaxed">{stripMd(event.content)}</p>
                   </div>
                 )}
 
@@ -233,14 +296,14 @@ export function AgentPanel({ patient, currentVitals }) {
                     <p className="text-xs font-mono text-amber-400 uppercase mb-1">
                       {event.action_type === 'urgent_brief' ? '🚨 Urgent Brief' : '📞 Outreach Script'}
                     </p>
-                    <p className="text-xs text-text-secondary leading-relaxed whitespace-pre-wrap">{event.content}</p>
+                    <p className="text-xs text-text-secondary leading-relaxed whitespace-pre-wrap">{stripMd(event.content)}</p>
                   </div>
                 )}
 
                 {event.type === 'summary' && (
                   <div className="bg-bg-elevated rounded-lg p-3 border border-accent-primary/20">
                     <p className="text-xs font-mono text-accent-primary uppercase mb-1">Clinical Summary</p>
-                    <p className="text-xs text-text-secondary leading-relaxed whitespace-pre-wrap">{event.content}</p>
+                    <p className="text-xs text-text-secondary leading-relaxed whitespace-pre-wrap">{stripMd(event.content)}</p>
                   </div>
                 )}
 
@@ -262,6 +325,53 @@ export function AgentPanel({ patient, currentVitals }) {
           </AnimatePresence>
         </div>
       </div>
+      {/* Doctor chat — shown after analysis completes */}
+      <AnimatePresence>
+        {complete && activeAction === 'analyze' && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="bg-bg-base border border-bg-border rounded-xl overflow-hidden flex flex-col"
+          >
+            <div className="px-3 py-2 border-b border-bg-border">
+              <span className="text-xs font-mono text-text-muted uppercase tracking-wider">Ask the AI</span>
+            </div>
+
+            {/* Chat history */}
+            {chatMessages.length > 0 && (
+              <div className="px-3 py-2 space-y-2 max-h-48 overflow-y-auto">
+                {chatMessages.map((msg, i) => (
+                  <div key={i} className={clsx('text-xs leading-relaxed', msg.role === 'user' ? 'text-accent-primary' : 'text-text-secondary')}>
+                    <span className="font-mono text-text-muted mr-1">{msg.role === 'user' ? 'You:' : 'AI:'}</span>
+                    <span className="whitespace-pre-wrap">{stripMd(msg.content)}</span>
+                    {msg.role === 'assistant' && i === chatMessages.length - 1 && chatStreaming && (
+                      <span className="inline-block w-1.5 h-3 bg-accent-primary ml-0.5 animate-pulse" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Input */}
+            <div className="flex items-center gap-2 px-3 py-2">
+              <input
+                ref={chatInputRef}
+                type="text"
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleChatSend()}
+                placeholder="Ask about this patient..."
+                disabled={chatStreaming}
+                className="flex-1 bg-bg-surface border border-bg-border rounded-lg px-3 py-1.5 text-xs text-text-primary placeholder-text-muted focus:outline-none focus:border-accent-primary disabled:opacity-50"
+              />
+              <Button size="sm" variant="primary" onClick={handleChatSend} disabled={chatStreaming || !chatInput.trim()}>
+                {chatStreaming ? '...' : '↑'}
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
     </>
   )
