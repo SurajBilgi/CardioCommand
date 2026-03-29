@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { clsx } from 'clsx'
 import { useVitalsWS } from '../hooks/useVitalsWS'
-import { fetchPatient } from '../services/api'
+import { fetchPatient, fetchWhoopStatus, getWhoopConnectUrl, sendRehabCheckin, syncWhoop } from '../services/api'
 import { DemoPanel } from '../components/demo/DemoPanel'
 import { StreakRewards } from '../components/streak/StreakRewards'
 import { PatientCallModal } from '../components/voice/PatientCallModal'
@@ -284,7 +284,7 @@ function MedRow({ name, dose, time, taken, onToggle }) {
   )
 }
 
-function CelebrationOverlay({ onClose, onTalkToCora }) {
+function CelebrationOverlay({ onClose, onTalkToCora, streakDays }) {
   return (
     <motion.div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6"
@@ -305,7 +305,7 @@ function CelebrationOverlay({ onClose, onTalkToCora }) {
           You completed today's rehab session.
         </p>
         <div className="bg-accent-calm/10 rounded-2xl px-4 py-3 mb-4">
-          <p className="font-ui text-accent-calm font-semibold text-lg">🔥 {REHAB_STREAK + 1}-day streak!</p>
+          <p className="font-ui text-accent-calm font-semibold text-lg">🔥 {Math.max(1, streakDays)}-day streak!</p>
           <p className="font-ui text-xs text-txt-secondary mt-0.5">That's your best streak yet, John!</p>
         </div>
         <p className="font-ui text-xs text-txt-muted mb-4">
@@ -326,6 +326,84 @@ function CelebrationOverlay({ onClose, onTalkToCora }) {
       </motion.div>
     </motion.div>
   )
+}
+
+function SkipReasonModal({ onClose, onSelectReason }) {
+  const options = [
+    'Too tired today',
+    'Worried it is not safe',
+    'Pain or discomfort',
+    'No time today',
+    'Just not feeling up to it',
+  ]
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 bg-black/50 flex items-end justify-center p-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+    >
+      <motion.div
+        className="w-full max-w-mobile bg-bg-surface rounded-3xl border border-bg-border shadow-xl p-4"
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 24 }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <p className="font-display text-xl text-txt-primary">What got in the way today?</p>
+        <p className="font-ui text-sm text-txt-secondary mt-1 mb-3">Pick the one that feels closest. Cora will adjust your plan.</p>
+        <div className="space-y-2">
+          {options.map(option => (
+            <button
+              key={option}
+              onClick={() => onSelectReason(option)}
+              className="w-full text-left rounded-2xl border border-bg-border bg-bg-elevated px-4 py-3 font-ui text-sm text-txt-primary"
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={onClose}
+          className="w-full mt-3 py-2.5 font-ui text-sm text-txt-muted"
+        >
+          Close
+        </button>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+async function readSseText(response) {
+  const reader = response.body?.getReader()
+  if (!reader) return { text: '', rehab: null }
+
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let fullText = ''
+  let rehab = null
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() || ''
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue
+      try {
+        const event = JSON.parse(line.slice(6))
+        if (event.type === 'token') fullText += event.content
+        if (event.type === 'state') rehab = event.rehab
+      } catch {}
+    }
+  }
+
+  return { text: fullText.trim(), rehab }
 }
 
 // Fallback demo insurance for when patient data hasn't loaded yet
@@ -486,21 +564,48 @@ export default function Home() {
   const [patient, setPatient] = useState(null)
   const [mood, setMood] = useState(null)
   const [showVoiceCall, setShowVoiceCall] = useState(false)
+  const [showWearableOptions, setShowWearableOptions] = useState(false)
+  const [wearableMessage, setWearableMessage] = useState('')
+  const [whoopStatus, setWhoopStatus] = useState(null)
+  const [whoopSyncing, setWhoopSyncing] = useState(false)
   const [showStreakCalendar, setShowStreakCalendar] = useState(false)
   const [sessionActive, setSessionActive] = useState(false)
   const [sessionDuration, setSessionDuration] = useState(0)
   const [showCelebration, setShowCelebration] = useState(false)
-  const [takenMeds, setTakenMeds] = useState(new Set([0, 1, 2])) // first 3 taken by default (demo)
+  const [showSkipReasons, setShowSkipReasons] = useState(false)
+  const [coachFeedback, setCoachFeedback] = useState('')
+  const [rehabSubmitting, setRehabSubmitting] = useState(false)
+  const [rehabState, setRehabState] = useState(null)
+  const [takenMeds, setTakenMeds] = useState(new Set([0, 1, 2]))
   const [searchParams] = useSearchParams()
   const isDemo = searchParams.get('demo') === 'true'
   const navigate = useNavigate()
   const { vitals } = useVitalsWS(PATIENT_ID)
 
+  const refreshPatient = async () => {
+    const nextPatient = await fetchPatient(PATIENT_ID)
+    setPatient(nextPatient)
+    setRehabState(nextPatient?.rehab || null)
+    return nextPatient
+  }
+
   useEffect(() => {
-    fetchPatient(PATIENT_ID).then(setPatient).catch(() => {})
+    refreshPatient().catch(() => {})
+    fetchWhoopStatus(PATIENT_ID).then(setWhoopStatus).catch(() => {})
   }, [])
 
-  // Session timer
+  useEffect(() => {
+    const wearableError = searchParams.get('wearable_error')
+    const whoopConnectedParam = searchParams.get('whoop')
+
+    if (wearableError === 'whoop_not_ready') {
+      setWearableMessage('WHOOP connection is not ready on this deployment yet. You can still use the app and connect later.')
+    } else if (whoopConnectedParam === 'connected') {
+      setWearableMessage('Your wearable was connected successfully.')
+      fetchWhoopStatus(PATIENT_ID).then(setWhoopStatus).catch(() => {})
+    }
+  }, [searchParams])
+
   useEffect(() => {
     let interval
     if (sessionActive) {
@@ -520,8 +625,12 @@ export default function Home() {
   const hrStatus = hr !== '—' ? (hr > 100 ? 'warning' : 'ok') : 'muted'
   const spo2Status = spo2 !== '—' ? (spo2 < 95 ? 'warning' : 'ok') : 'muted'
 
-  // Rehab progress (12-week journey)
-  const rehabProgress = Math.min(100, (REHAB_WEEK / 12) * 100)
+  const activeRehab = rehabState || patient?.rehab || {}
+  const rehabWeek = activeRehab.rehab_week ?? REHAB_WEEK
+  const streakDays = activeRehab.streak_days ?? REHAB_STREAK
+  const sessionsThisWeek = activeRehab.sessions_this_week ?? SESSIONS_THIS_WEEK
+  const sessionsGoal = activeRehab.sessions_goal ?? SESSIONS_GOAL
+  const rehabProgress = Math.min(100, (rehabWeek / 12) * 100)
 
   const moods = [
     { emoji: '😊', label: 'Great' },
@@ -540,9 +649,45 @@ export default function Home() {
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  const whoopLatest = whoopStatus?.latest || {}
+  const whoopConnected = Boolean(whoopStatus?.connected)
+  const whoopSleep = whoopLatest.sleep_hours ?? '—'
+  const whoopRecovery = whoopLatest.recovery_score ?? '—'
+  const whoopRhr = whoopLatest.resting_heart_rate ?? '—'
+  const whoopConfigured = Boolean(whoopStatus?.configured)
+  const whoopLastSync = whoopStatus?.last_sync_at
+    ? new Date(whoopStatus.last_sync_at).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+    : null
+
+  async function handleWhoopSync() {
+    try {
+      setWhoopSyncing(true)
+      const next = await syncWhoop(PATIENT_ID)
+      setWhoopStatus(next)
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setWhoopSyncing(false)
+    }
+  }
+
+  function handleWhoopConnect() {
+    setShowWearableOptions(false)
+    window.location.assign(getWhoopConnectUrl(PATIENT_ID))
+  }
+
+  function handleAppleHealthConnect() {
+    setShowWearableOptions(false)
+    setWearableMessage('Apple Health connection needs a small iPhone companion app. For this demo, WHOOP is the live wearable path.')
+  }
   const streakCalendar = useMemo(
-    () => buildStreakCalendar(new Date().getFullYear(), REHAB_STREAK, REHAB_WEEK, BEST_STREAK),
-    []
+    () => buildStreakCalendar(new Date().getFullYear(), streakDays, rehabWeek, BEST_STREAK),
+    [rehabWeek, streakDays]
   )
 
   const formatTime = (secs) => {
@@ -552,13 +697,35 @@ export default function Home() {
   }
 
   const handleStartSession = () => {
+    setCoachFeedback('')
     setSessionActive(true)
     setSessionDuration(0)
   }
 
-  const handleEndSession = () => {
+  const handleEndSession = async () => {
     setSessionActive(false)
-    setShowCelebration(true)
+    setRehabSubmitting(true)
+    try {
+      const response = await sendRehabCheckin({
+        patientId: PATIENT_ID,
+        patientProfile: patient || {},
+        mode: 'win',
+        sessionDuration,
+        rehabWeek,
+        streak: streakDays,
+      })
+      const result = await readSseText(response)
+      setCoachFeedback(result.text)
+      if (result.rehab) setRehabState(result.rehab)
+      await refreshPatient()
+      setShowCelebration(true)
+    } catch (error) {
+      console.error(error)
+      setCoachFeedback("Amazing work. Even a short walk counts today.")
+      setShowCelebration(true)
+    } finally {
+      setRehabSubmitting(false)
+    }
   }
 
   const handleCelebrationClose = () => setShowCelebration(false)
@@ -566,6 +733,31 @@ export default function Home() {
   const handleTalkToCora = () => {
     setShowCelebration(false)
     setShowVoiceCall(true)
+  }
+
+  const handleSkipReason = async (reason) => {
+    setShowSkipReasons(false)
+    setRehabSubmitting(true)
+    try {
+      const response = await sendRehabCheckin({
+        patientId: PATIENT_ID,
+        patientProfile: patient || {},
+        mode: 'wall',
+        context: reason,
+        barrierLabel: reason,
+        rehabWeek,
+        streak: streakDays,
+      })
+      const result = await readSseText(response)
+      setCoachFeedback(result.text)
+      if (result.rehab) setRehabState(result.rehab)
+      await refreshPatient()
+    } catch (error) {
+      console.error(error)
+      setCoachFeedback("That's okay — recovery is still happening. Let's take one very small step tomorrow.")
+    } finally {
+      setRehabSubmitting(false)
+    }
   }
 
   const toggleMed = (index) => {
@@ -590,13 +782,82 @@ export default function Home() {
           onClose={() => setShowVoiceCall(false)}
         />
       )}
-    </AnimatePresence>
+      {showWearableOptions && (
+        <motion.div
+          className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => setShowWearableOptions(false)}
+        >
+          <motion.div
+            className="w-full max-w-mobile bg-bg-surface rounded-3xl border border-bg-border shadow-xl p-4"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <p className="font-display text-xl text-txt-primary">Choose a wearable</p>
+                <p className="font-ui text-sm text-txt-secondary mt-1">Keep this simple. Pick the device you already use.</p>
+              </div>
+              <button
+                onClick={() => setShowWearableOptions(false)}
+                className="w-8 h-8 rounded-full bg-bg-elevated text-txt-secondary"
+              >
+                ×
+              </button>
+            </div>
 
-    <AnimatePresence>
+            <button
+              onClick={handleWhoopConnect}
+              className="w-full text-left rounded-2xl border border-bg-border bg-bg-elevated px-4 py-4 mb-3"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-display text-base text-txt-primary">WHOOP</p>
+                  <p className="font-ui text-sm text-txt-secondary mt-1">
+                    {whoopConfigured ? 'Connect and sync your recovery, sleep, and heart data' : 'Ready in this app once the WHOOP credentials are added'}
+                  </p>
+                </div>
+                <span className={clsx(
+                  'font-ui text-xs px-2 py-1 rounded-full',
+                  whoopConfigured ? 'bg-accent-primary/10 text-accent-primary' : 'bg-bg-surface text-txt-muted'
+                )}>
+                  {whoopConfigured ? 'Connect' : 'Not ready'}
+                </span>
+              </div>
+            </button>
+
+            <button
+              onClick={handleAppleHealthConnect}
+              className="w-full text-left rounded-2xl border border-bg-border bg-bg-elevated px-4 py-4"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-display text-base text-txt-primary">Apple Health</p>
+                  <p className="font-ui text-sm text-txt-secondary mt-1">
+                    Best on iPhone with a small companion app bridge.
+                  </p>
+                </div>
+                <span className="font-ui text-xs px-2 py-1 rounded-full bg-bg-surface text-txt-muted">Soon</span>
+              </div>
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
       {showCelebration && (
         <CelebrationOverlay
           onClose={handleCelebrationClose}
           onTalkToCora={handleTalkToCora}
+          streakDays={streakDays}
+        />
+      )}
+      {showSkipReasons && (
+        <SkipReasonModal
+          onClose={() => setShowSkipReasons(false)}
+          onSelectReason={handleSkipReason}
         />
       )}
     </AnimatePresence>
@@ -604,14 +865,14 @@ export default function Home() {
     <AnimatePresence>
       {showStreakCalendar && (
         <StreakCalendarModal
-          streak={REHAB_STREAK}
+          streak={streakDays}
           calendar={streakCalendar}
           onClose={() => setShowStreakCalendar(false)}
         />
       )}
     </AnimatePresence>
 
-    <div className="app-container pb-8">
+    <div className="app-container pb-28">
       {/* Header */}
       <div className="bg-bg-surface px-5 pt-safe pt-8 pb-5 border-b border-bg-border">
         <div className="flex items-start justify-between">
@@ -619,7 +880,7 @@ export default function Home() {
             <h1 className="font-display text-2xl text-txt-primary">
               {greeting}, {patient?.name?.split(' ')[0] || 'John'} ☀️
             </h1>
-            <p className="font-ui text-sm text-txt-secondary mt-1">Week {REHAB_WEEK} of your cardiac rehab</p>
+            <p className="font-ui text-sm text-txt-secondary mt-1">Week {rehabWeek} of your cardiac rehab</p>
           </div>
           <div className="flex items-center gap-2">
             {/* Streak badge */}
@@ -629,7 +890,7 @@ export default function Home() {
               title="View recovery streak"
             >
               <span className="text-lg leading-none">🔥</span>
-              <span className="font-ui text-xs font-bold text-amber-600">{REHAB_STREAK}d</span>
+              <span className="font-ui text-xs font-bold text-amber-600">{streakDays}d</span>
             </button>
             {/* Voice call button */}
             <motion.button
@@ -655,7 +916,7 @@ export default function Home() {
         <div className="mt-4">
           <div className="flex justify-between text-xs font-ui text-txt-muted mb-1.5">
             <span>Start</span>
-            <span className="text-accent-primary font-medium">Week {REHAB_WEEK} ← you are here</span>
+            <span className="text-accent-primary font-medium">Week {rehabWeek} ← you are here</span>
             <span>Week 12</span>
           </div>
           <div className="relative h-2 bg-bg-elevated rounded-full overflow-hidden">
@@ -674,12 +935,21 @@ export default function Home() {
             ))}
           </div>
           <p className="text-xs font-ui text-txt-muted mt-1.5">
-            {SESSIONS_THIS_WEEK} of {SESSIONS_GOAL} sessions complete this week
+            {sessionsThisWeek} of {sessionsGoal} sessions complete this week
           </p>
         </div>
       </div>
 
       <div className="px-4 pt-4 space-y-4">
+        {wearableMessage && (
+          <motion.div
+            className="bg-bg-surface rounded-2xl p-4 border border-bg-border shadow-sm"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <p className="font-ui text-sm text-txt-secondary">{wearableMessage}</p>
+          </motion.div>
+        )}
 
         {/* TODAY'S SESSION CARD — "The Win" & "The Wall" demo moment */}
         <motion.div
@@ -741,13 +1011,15 @@ export default function Home() {
                   <motion.button
                     onClick={handleStartSession}
                     whileTap={{ scale: 0.97 }}
-                    className="flex-1 py-3 bg-accent-calm text-white rounded-xl font-ui font-semibold text-sm"
+                    className="flex-1 py-3 bg-accent-calm text-white rounded-xl font-ui font-semibold text-sm disabled:opacity-60"
+                    disabled={rehabSubmitting}
                   >
                     Start Walk 🚶
                   </motion.button>
                   <button
-                    onClick={() => navigate('/chat')}
-                    className="px-4 py-3 border border-bg-border rounded-xl font-ui text-sm text-txt-secondary"
+                    onClick={() => setShowSkipReasons(true)}
+                    className="px-4 py-3 border border-bg-border rounded-xl font-ui text-sm text-txt-secondary disabled:opacity-60"
+                    disabled={rehabSubmitting}
                   >
                     Skip →
                   </button>
@@ -756,16 +1028,24 @@ export default function Home() {
                 <motion.button
                   onClick={handleEndSession}
                   whileTap={{ scale: 0.97 }}
-                  className="flex-1 py-3 bg-red-500 text-white rounded-xl font-ui font-semibold text-sm"
+                  className="flex-1 py-3 bg-red-500 text-white rounded-xl font-ui font-semibold text-sm disabled:opacity-60"
+                  disabled={rehabSubmitting}
                 >
-                  End Session ✓
+                  {rehabSubmitting ? 'Saving...' : 'End Session ✓'}
                 </motion.button>
               )}
             </div>
 
+            {coachFeedback && (
+              <div className="mt-3 bg-bg-elevated border border-bg-border rounded-xl p-3">
+                <p className="font-display text-sm text-txt-primary">Cora says</p>
+                <p className="font-ui text-sm text-txt-secondary mt-1">{coachFeedback}</p>
+              </div>
+            )}
+
             {!sessionActive && (
               <p className="text-xs font-ui text-txt-muted text-center mt-2">
-                Completed {SESSIONS_THIS_WEEK}/{SESSIONS_GOAL} sessions this week
+                Completed {sessionsThisWeek}/{sessionsGoal} sessions this week
               </p>
             )}
           </div>
@@ -976,6 +1256,72 @@ export default function Home() {
               Ask →
             </button>
           </div>
+        </motion.div>
+
+        <motion.div
+          className="bg-bg-surface rounded-2xl p-4 border border-bg-border shadow-sm"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.36 }}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-display text-base text-txt-primary">Connect Wearable</p>
+              <p className="font-ui text-xs text-txt-muted mt-0.5">
+                {whoopConnected
+                  ? `Connected${whoopLastSync ? ` · Last synced ${whoopLastSync}` : ''}`
+                  : 'Link your wearable to bring in your recovery, sleep, and heart data'}
+              </p>
+            </div>
+            <span className={clsx(
+              'font-ui text-xs px-2 py-1 rounded-full',
+              whoopConnected ? 'bg-accent-calm/10 text-accent-calm' : 'bg-bg-elevated text-txt-secondary'
+            )}>
+              {whoopConnected ? 'Connected' : 'Optional'}
+            </span>
+          </div>
+
+          {whoopConnected ? (
+            <>
+              <div className="grid grid-cols-3 gap-2 mt-3">
+                <div className="bg-bg-elevated rounded-xl p-3">
+                  <p className="font-ui text-xs text-txt-muted">Recovery</p>
+                  <p className="font-display text-xl text-txt-primary mt-1">{whoopRecovery}<span className="text-sm text-txt-secondary">%</span></p>
+                </div>
+                <div className="bg-bg-elevated rounded-xl p-3">
+                  <p className="font-ui text-xs text-txt-muted">Sleep</p>
+                  <p className="font-display text-xl text-txt-primary mt-1">{whoopSleep}<span className="text-sm text-txt-secondary"> hrs</span></p>
+                </div>
+                <div className="bg-bg-elevated rounded-xl p-3">
+                  <p className="font-ui text-xs text-txt-muted">Resting HR</p>
+                  <p className="font-display text-xl text-txt-primary mt-1">{whoopRhr}<span className="text-sm text-txt-secondary"> bpm</span></p>
+                </div>
+              </div>
+
+              <div className="mt-3 flex gap-2">
+                <button
+                  onClick={handleWhoopSync}
+                  disabled={whoopSyncing}
+                  className="flex-1 font-ui text-sm font-medium text-white bg-accent-primary py-2.5 rounded-xl hover:bg-[#d4614a] transition-colors disabled:opacity-60"
+                >
+                  {whoopSyncing ? 'Syncing...' : 'Sync Wearable'}
+                </button>
+                <button
+                  onClick={() => navigate('/vitals')}
+                  className="flex-1 font-ui text-sm font-medium text-accent-primary py-2.5 border border-accent-primary/30 rounded-xl hover:bg-accent-primary/5 transition-colors"
+                >
+                  View Details
+                </button>
+              </div>
+            </>
+          ) : (
+            <button
+              onClick={() => setShowWearableOptions(true)}
+              className="mt-3 w-full font-ui text-sm font-medium text-white bg-accent-primary py-3 rounded-xl hover:bg-[#d4614a] transition-colors"
+            >
+              Connect Wearable
+            </button>
+          )}
         </motion.div>
       </div>
 

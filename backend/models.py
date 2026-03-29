@@ -1,7 +1,7 @@
 """SQLAlchemy ORM models for CardioCommand."""
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Integer, DateTime, JSON, Text
+from sqlalchemy import Boolean, Column, String, Integer, DateTime, JSON, Text
 from database import Base
 
 
@@ -86,4 +86,36 @@ class CallRecord(Base):
             "created_at": (
                 self.created_at.isoformat() if self.created_at else None
             ),
+        }
+
+
+class WhoopConnection(Base):
+    """Stores a patient's WHOOP OAuth tokens and latest synced summary."""
+    __tablename__ = "whoop_connections"
+
+    patient_id = Column(String, primary_key=True)
+    whoop_user_id = Column(String, nullable=True, index=True)
+    email = Column(String, nullable=True)
+    access_token = Column(Text, nullable=True)
+    refresh_token = Column(Text, nullable=True)
+    scope = Column(String, nullable=True)
+    token_type = Column(String, nullable=True)
+    expires_at = Column(DateTime, nullable=True)
+    is_connected = Column(Boolean, default=False)
+    latest_payload = Column(JSON, default=dict)
+    last_sync_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=_now)
+    updated_at = Column(DateTime, default=_now, onupdate=_now)
+
+    def to_summary(self) -> dict:
+        return {
+            "patient_id": self.patient_id,
+            "connected": bool(self.is_connected and self.access_token),
+            "provider": "whoop",
+            "whoop_user_id": self.whoop_user_id,
+            "email": self.email,
+            "last_sync_at": (
+                self.last_sync_at.isoformat() if self.last_sync_at else None
+            ),
+            "latest": self.latest_payload or {},
         }
