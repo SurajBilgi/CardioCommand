@@ -38,6 +38,14 @@ const MOCK_SCENARIOS = [
   { key: 'full_recovery',   label: 'Day 30 — Full Recovery' },
 ]
 
+const MOCK_WHOOP_STATUS = {
+  patient_id: 'john-mercer',
+  connected: false,
+  provider: 'whoop',
+  latest: {},
+  setup_required: true,
+}
+
 async function withFallback(apiFn, fallback) {
   try { return await apiFn() } catch { return fallback }
 }
@@ -83,3 +91,12 @@ export const sendChat = (patientId, message, patientProfile, history) =>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ patient_id: patientId, message, patient_profile: patientProfile, conversation_history: history }),
   })
+
+export const fetchWhoopStatus = (patientId) =>
+  withFallback(() => api.get(`/integrations/whoop/latest/${patientId}`).then(r => r.data), MOCK_WHOOP_STATUS)
+
+export const syncWhoop = (patientId) =>
+  api.post(`/integrations/whoop/sync/${patientId}`).then(r => r.data)
+
+export const getWhoopConnectUrl = (patientId) =>
+  `${BASE_URL}/integrations/whoop/connect?patient_id=${encodeURIComponent(patientId)}`

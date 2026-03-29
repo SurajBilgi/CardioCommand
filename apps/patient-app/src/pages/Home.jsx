@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { clsx } from 'clsx'
 import { useVitalsWS } from '../hooks/useVitalsWS'
-import { fetchPatient } from '../services/api'
+import { fetchPatient, fetchWhoopStatus, getWhoopConnectUrl, syncWhoop } from '../services/api'
 import { DemoPanel } from '../components/demo/DemoPanel'
 import { PatientCallModal } from '../components/voice/PatientCallModal'
 
@@ -45,6 +45,8 @@ export default function Home() {
   const [patient, setPatient] = useState(null)
   const [mood, setMood] = useState(null)
   const [showVoiceCall, setShowVoiceCall] = useState(false)
+  const [whoopStatus, setWhoopStatus] = useState(null)
+  const [whoopSyncing, setWhoopSyncing] = useState(false)
   const [searchParams] = useSearchParams()
   const isDemo = searchParams.get('demo') === 'true'
   const navigate = useNavigate()
@@ -52,6 +54,7 @@ export default function Home() {
 
   useEffect(() => {
     fetchPatient(PATIENT_ID).then(setPatient).catch(() => {})
+    fetchWhoopStatus(PATIENT_ID).then(setWhoopStatus).catch(() => {})
   }, [])
 
   const hr = vitals?.heart_rate ? Math.round(vitals.heart_rate) : '—'
@@ -85,6 +88,35 @@ export default function Home() {
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  const whoopLatest = whoopStatus?.latest || {}
+  const whoopConnected = Boolean(whoopStatus?.connected)
+  const whoopSleep = whoopLatest.sleep_hours ?? '—'
+  const whoopRecovery = whoopLatest.recovery_score ?? '—'
+  const whoopRhr = whoopLatest.resting_heart_rate ?? '—'
+  const whoopLastSync = whoopStatus?.last_sync_at
+    ? new Date(whoopStatus.last_sync_at).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+    : null
+
+  async function handleWhoopSync() {
+    try {
+      setWhoopSyncing(true)
+      const next = await syncWhoop(PATIENT_ID)
+      setWhoopStatus(next)
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setWhoopSyncing(false)
+    }
+  }
+
+  function handleWhoopConnect() {
+    window.location.assign(getWhoopConnectUrl(PATIENT_ID))
+  }
 
   return (
     <>
@@ -344,6 +376,72 @@ export default function Home() {
               Ask →
             </button>
           </div>
+        </motion.div>
+
+        <motion.div
+          className="bg-bg-surface rounded-2xl p-4 border border-bg-border shadow-sm"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.36 }}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-display text-base text-txt-primary">Connect Wearable</p>
+              <p className="font-ui text-xs text-txt-muted mt-0.5">
+                {whoopConnected
+                  ? `Connected${whoopLastSync ? ` · Last synced ${whoopLastSync}` : ''}`
+                  : 'Link your wearable to bring in your recovery, sleep, and heart data'}
+              </p>
+            </div>
+            <span className={clsx(
+              'font-ui text-xs px-2 py-1 rounded-full',
+              whoopConnected ? 'bg-accent-calm/10 text-accent-calm' : 'bg-bg-elevated text-txt-secondary'
+            )}>
+              {whoopConnected ? 'Connected' : 'Optional'}
+            </span>
+          </div>
+
+          {whoopConnected ? (
+            <>
+              <div className="grid grid-cols-3 gap-2 mt-3">
+                <div className="bg-bg-elevated rounded-xl p-3">
+                  <p className="font-ui text-xs text-txt-muted">Recovery</p>
+                  <p className="font-display text-xl text-txt-primary mt-1">{whoopRecovery}<span className="text-sm text-txt-secondary">%</span></p>
+                </div>
+                <div className="bg-bg-elevated rounded-xl p-3">
+                  <p className="font-ui text-xs text-txt-muted">Sleep</p>
+                  <p className="font-display text-xl text-txt-primary mt-1">{whoopSleep}<span className="text-sm text-txt-secondary"> hrs</span></p>
+                </div>
+                <div className="bg-bg-elevated rounded-xl p-3">
+                  <p className="font-ui text-xs text-txt-muted">Resting HR</p>
+                  <p className="font-display text-xl text-txt-primary mt-1">{whoopRhr}<span className="text-sm text-txt-secondary"> bpm</span></p>
+                </div>
+              </div>
+
+              <div className="mt-3 flex gap-2">
+                <button
+                  onClick={handleWhoopSync}
+                  disabled={whoopSyncing}
+                  className="flex-1 font-ui text-sm font-medium text-white bg-accent-primary py-2.5 rounded-xl hover:bg-[#d4614a] transition-colors disabled:opacity-60"
+                >
+                  {whoopSyncing ? 'Syncing...' : 'Sync Wearable'}
+                </button>
+                <button
+                  onClick={() => navigate('/vitals')}
+                  className="flex-1 font-ui text-sm font-medium text-accent-primary py-2.5 border border-accent-primary/30 rounded-xl hover:bg-accent-primary/5 transition-colors"
+                >
+                  View Details
+                </button>
+              </div>
+            </>
+          ) : (
+            <button
+              onClick={handleWhoopConnect}
+              className="mt-3 w-full font-ui text-sm font-medium text-white bg-accent-primary py-3 rounded-xl hover:bg-[#d4614a] transition-colors"
+            >
+              Connect Wearable
+            </button>
+          )}
         </motion.div>
       </div>
 
