@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from lib.rehab_tracker import record_rehab_event
 from vitals_engine.simulator import simulator
 from risk_model.predictor import compute_risk_score, get_alert_level
 from prompts.library import PROMPTS
@@ -53,6 +54,15 @@ class RehabCheckinRequest(BaseModel):
     context: str = ""  # e.g. "patient said they're too tired"
     rehab_week: int = 2
     streak: int = 4
+    barrier_label: str = ""
+
+
+class DoctorChatRequest(BaseModel):
+    patient_profile: dict
+    current_vitals: dict
+    message: str
+    analysis_context: Optional[dict] = None  # {risk_score, alert_level, reasoning, summary, action}
+    conversation_history: Optional[list] = []
 
 
 def _get_openai_client():
@@ -341,6 +351,7 @@ async def generate_soap_note(request: SOAPRequest):
 async def rehab_checkin(request: RehabCheckinRequest):
     """Post-exercise win celebration or missed-session wall intervention from Cora."""
     async def generate():
+        full_text = ""
         try:
             client = _get_openai_client()
             vitals = simulator.get_current(request.patient_id)
@@ -378,8 +389,19 @@ async def rehab_checkin(request: RehabCheckinRequest):
             for chunk in stream:
                 delta = chunk.choices[0].delta.content or ""
                 if delta:
+                    full_text += delta
                     yield f"data: {json.dumps({'type': 'token', 'content': delta})}\n\n"
 
+            state = record_rehab_event(
+                request.patient_id,
+                request.patient_profile,
+                mode=request.mode,
+                coach_message=full_text.strip(),
+                session_duration=request.session_duration,
+                barrier_reason=request.barrier_label or request.context,
+            )
+
+            yield f"data: {json.dumps({'type': 'state', 'rehab': state})}\n\n"
             yield f"data: {json.dumps({'type': 'complete', 'mode': request.mode})}\n\n"
 
         except Exception as e:
@@ -388,8 +410,63 @@ async def rehab_checkin(request: RehabCheckinRequest):
                 if request.mode == "win"
                 else "That's okay — rest is part of recovery too. What would make it easier to try just 10 minutes today?"
             )
+            state = record_rehab_event(
+                request.patient_id,
+                request.patient_profile,
+                mode=request.mode,
+                coach_message=fallback,
+                session_duration=request.session_duration,
+                barrier_reason=request.barrier_label or request.context,
+            )
             yield f"data: {json.dumps({'type': 'token', 'content': fallback})}\n\n"
+            yield f"data: {json.dumps({'type': 'state', 'rehab': state})}\n\n"
             yield f"data: {json.dumps({'type': 'complete', 'mode': request.mode})}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@router.post("/doctor-chat")
+async def doctor_chat(request: DoctorChatRequest):
+    async def generate():
+        try:
+            client = _get_openai_client()
+            ctx = request.analysis_context or {}
+
+            system_prompt = PROMPTS["doctor_chat"].format(
+                patient_profile=request.patient_profile,
+                current_vitals=request.current_vitals,
+                risk_score=ctx.get("risk_score", "N/A"),
+                alert_level=ctx.get("alert_level", "unknown"),
+                reasoning=ctx.get("reasoning", "No analysis run yet."),
+                summary=ctx.get("summary", "No summary available."),
+                action=ctx.get("action", "No action generated."),
+            )
+
+            messages = [{"role": "system", "content": system_prompt}]
+            for h in (request.conversation_history or []):
+                messages.append({"role": h.get("role", "user"), "content": h.get("content", "")})
+            messages.append({"role": "user", "content": request.message})
+
+            stream = client.chat.completions.create(
+                model="gpt-4o",
+                messages=messages,
+                max_tokens=400,
+                stream=True,
+            )
+
+            for chunk in stream:
+                delta = chunk.choices[0].delta.content or ""
+                if delta:
+                    yield f"data: {json.dumps({'type': 'token', 'content': delta})}\n\n"
+
+            yield f"data: {json.dumps({'type': 'complete'})}\n\n"
+
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
     return StreamingResponse(
         generate(),

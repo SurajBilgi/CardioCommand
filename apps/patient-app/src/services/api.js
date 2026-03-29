@@ -18,6 +18,14 @@ const MOCK_SCENARIOS = [
   { key: 'full_recovery',   label: 'Day 30 — Full Recovery' },
 ]
 
+const MOCK_WHOOP_STATUS = {
+  patient_id: 'john-mercer',
+  connected: false,
+  provider: 'whoop',
+  latest: {},
+  setup_required: true,
+}
+
 async function withFallback(apiFn, fallback) {
   try { return await apiFn() } catch { return fallback }
 }
@@ -57,3 +65,37 @@ export const sendChat = (patientId, message, patientProfile, history) =>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ patient_id: patientId, message, patient_profile: patientProfile, conversation_history: history }),
   })
+
+export const sendRehabCheckin = ({
+  patientId,
+  patientProfile,
+  mode,
+  sessionDuration = 0,
+  context = '',
+  rehabWeek = 2,
+  streak = 4,
+  barrierLabel = '',
+}) =>
+  fetch(`${BASE_URL}/ai/rehab-checkin`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      patient_id: patientId,
+      patient_profile: patientProfile,
+      mode,
+      session_duration: sessionDuration,
+      context,
+      rehab_week: rehabWeek,
+      streak,
+      barrier_label: barrierLabel,
+    }),
+  })
+
+export const fetchWhoopStatus = (patientId) =>
+  withFallback(() => api.get(`/integrations/whoop/latest/${patientId}`).then(r => r.data), MOCK_WHOOP_STATUS)
+
+export const syncWhoop = (patientId) =>
+  api.post(`/integrations/whoop/sync/${patientId}`).then(r => r.data)
+
+export const getWhoopConnectUrl = (patientId) =>
+  `${BASE_URL}/integrations/whoop/connect?patient_id=${encodeURIComponent(patientId)}`
