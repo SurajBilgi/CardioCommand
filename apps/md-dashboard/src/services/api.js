@@ -216,6 +216,19 @@ export const getPreVisitBrief = (patientId, patientProfile) =>
     body: JSON.stringify({ patient_id: patientId, patient_profile: patientProfile }),
   })
 
+export const doctorChat = (patientProfile, currentVitals, message, analysisContext, conversationHistory) =>
+  fetch(`${BASE_URL}/ai/doctor-chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      patient_profile: patientProfile,
+      current_vitals: currentVitals,
+      message,
+      analysis_context: analysisContext,
+      conversation_history: conversationHistory,
+    }),
+  })
+
 export const generateSoapNote = (patientProfile, currentSoap, transcriptChunk) =>
   withFallback(
     () => api.post('/ai/soap-note', { patient_profile: patientProfile, current_soap: currentSoap, transcript_chunk: transcriptChunk }).then(r => r.data),

@@ -57,6 +57,14 @@ class RehabCheckinRequest(BaseModel):
     barrier_label: str = ""
 
 
+class DoctorChatRequest(BaseModel):
+    patient_profile: dict
+    current_vitals: dict
+    message: str
+    analysis_context: Optional[dict] = None  # {risk_score, alert_level, reasoning, summary, action}
+    conversation_history: Optional[list] = []
+
+
 def _get_openai_client():
     from openai import OpenAI
     return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -413,6 +421,52 @@ async def rehab_checkin(request: RehabCheckinRequest):
             yield f"data: {json.dumps({'type': 'token', 'content': fallback})}\n\n"
             yield f"data: {json.dumps({'type': 'state', 'rehab': state})}\n\n"
             yield f"data: {json.dumps({'type': 'complete', 'mode': request.mode})}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@router.post("/doctor-chat")
+async def doctor_chat(request: DoctorChatRequest):
+    async def generate():
+        try:
+            client = _get_openai_client()
+            ctx = request.analysis_context or {}
+
+            system_prompt = PROMPTS["doctor_chat"].format(
+                patient_profile=request.patient_profile,
+                current_vitals=request.current_vitals,
+                risk_score=ctx.get("risk_score", "N/A"),
+                alert_level=ctx.get("alert_level", "unknown"),
+                reasoning=ctx.get("reasoning", "No analysis run yet."),
+                summary=ctx.get("summary", "No summary available."),
+                action=ctx.get("action", "No action generated."),
+            )
+
+            messages = [{"role": "system", "content": system_prompt}]
+            for h in (request.conversation_history or []):
+                messages.append({"role": h.get("role", "user"), "content": h.get("content", "")})
+            messages.append({"role": "user", "content": request.message})
+
+            stream = client.chat.completions.create(
+                model="gpt-4o",
+                messages=messages,
+                max_tokens=400,
+                stream=True,
+            )
+
+            for chunk in stream:
+                delta = chunk.choices[0].delta.content or ""
+                if delta:
+                    yield f"data: {json.dumps({'type': 'token', 'content': delta})}\n\n"
+
+            yield f"data: {json.dumps({'type': 'complete'})}\n\n"
+
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
     return StreamingResponse(
         generate(),
