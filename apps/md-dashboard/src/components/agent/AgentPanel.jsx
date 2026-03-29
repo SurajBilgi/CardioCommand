@@ -28,6 +28,7 @@ export function AgentPanel({ patient, currentVitals }) {
   const [activeAction, setActiveAction] = useState(null)
   const [copied, setCopied] = useState(false)
   const [showVoiceCall, setShowVoiceCall] = useState(false)
+  const [outreachScript, setOutreachScript] = useState(null)
   const scrollRef = useRef(null)
 
   useEffect(() => {
@@ -62,6 +63,12 @@ export function AgentPanel({ patient, currentVitals }) {
   const summaryEvent = events.find(e => e.type === 'summary')
   const actionEvent = events.find(e => e.type === 'action')
   const reasoningEvent = events.find(e => e.type === 'reasoning')
+
+  // Capture outreach script whenever it arrives in the stream
+  useEffect(() => {
+    const outreachEvent = events.find(e => e.type === 'action' && e.action_type === 'outreach_script')
+    if (outreachEvent) setOutreachScript(outreachEvent.content)
+  }, [events])
 
   const actionButtons = [
     {
@@ -98,6 +105,7 @@ export function AgentPanel({ patient, currentVitals }) {
         <VoiceCallModal
           patient={patient}
           currentVitals={currentVitals}
+          outreachScript={outreachScript}
           onClose={() => setShowVoiceCall(false)}
         />
       </AnimatePresence>
