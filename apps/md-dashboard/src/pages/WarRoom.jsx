@@ -8,12 +8,20 @@ import { useVitalsWS } from '../hooks/useVitalsWS'
 import { PatientMap } from '../components/map/PatientMap'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
+import { getAdherenceInsight, getPopulationInsights } from '../lib/clinicalInsights'
+
+function insightVariantClass(tone) {
+  if (tone === 'critical') return 'border-red-500/30 bg-red-500/5'
+  if (tone === 'warning') return 'border-amber-500/30 bg-amber-500/5'
+  if (tone === 'success') return 'border-emerald-500/30 bg-emerald-500/5'
+  return 'border-bg-border bg-bg-surface'
+}
 
 function PatientRow({ patient, index }) {
   const { vitals: liveVitals } = useVitalsWS(patient.id)
   const vitals = liveVitals || patient.current_vitals || {}
   const score = vitals.risk_score || 0
-  const alert = vitals.alert
+  const adherence = getAdherenceInsight(patient, vitals)
 
   const riskBadge = score >= 80 ? 'critical' : score >= 60 ? 'warning' : score >= 35 ? 'info' : 'success'
   const riskEmoji = score >= 80 ? '🔴' : score >= 60 ? '🟡' : '🟢'
@@ -51,6 +59,11 @@ function PatientRow({ patient, index }) {
           <span>{riskEmoji}</span>
           <Badge variant={riskBadge}>{score}</Badge>
         </div>
+      </td>
+      <td className="px-4 py-3">
+        <Badge variant={adherence.level === 'high' ? 'critical' : adherence.level === 'moderate' ? 'warning' : 'success'}>
+          {adherence.score}
+        </Badge>
       </td>
       <td className="px-4 py-3 text-xs font-mono">
         <span className={vitals.heart_rate > 100 ? 'text-amber-400' : 'text-emerald-400'}>
@@ -90,6 +103,43 @@ export default function WarRoom() {
   const criticalCount = patients.filter(p => (p.risk_score || 0) >= 80).length
   const highRiskCount = patients.filter(p => (p.risk_score || 0) >= 60).length
   const savings = 98000
+  const populationInsights = getPopulationInsights(patients)
+  const insightCards = [
+    {
+      label: 'Likely To Skip Rehab',
+      value: populationInsights.likelyToSkip.length,
+      sub: populationInsights.likelyToSkip[0]?.patient?.name
+        ? `${populationInsights.likelyToSkip[0].patient.name} needs recovery coaching today`
+        : 'No high dropout-risk patients right now',
+      tone: 'critical',
+      icon: '🧭',
+    },
+    {
+      label: 'Worsening Recovery',
+      value: populationInsights.worseningRecovery.length,
+      sub: populationInsights.worseningRecovery[0]?.patient?.name
+        ? `${populationInsights.worseningRecovery[0].patient.name} is trending down`
+        : 'Recovery trends look stable across the panel',
+      tone: 'warning',
+      icon: '📉',
+    },
+    {
+      label: 'Needs Follow-Up Today',
+      value: populationInsights.followUpToday.length,
+      sub: populationInsights.followUpToday[0]?.patient?.name
+        ? `${populationInsights.followUpToday[0].patient.name} should be contacted first`
+        : 'No same-day follow-up backlog',
+      tone: 'warning',
+      icon: '📞',
+    },
+    {
+      label: 'Est. Readmissions Prevented',
+      value: populationInsights.estimatedReadmissionsPrevented,
+      sub: 'Projected from proactive outreach and adherence rescue',
+      tone: 'success',
+      icon: '🛡️',
+    },
+  ]
 
   const donutData = [
     { name: 'Critical', value: patients.filter(p => (p.risk_score || 0) >= 80).length, color: '#FF3B3B' },
@@ -139,6 +189,24 @@ export default function WarRoom() {
                 stat.variant === 'red' ? 'text-red-400' : stat.variant === 'green' ? 'text-emerald-400' : 'text-text-primary'
               )}>{stat.value}</p>
               <p className="text-xs text-text-muted">{stat.sub}</p>
+            </motion.div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-4 gap-4">
+          {insightCards.map(card => (
+            <motion.div
+              key={card.label}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={clsx('rounded-xl border p-5', insightVariantClass(card.tone))}
+            >
+              <div className="flex items-start justify-between mb-2">
+                <p className="text-xs font-mono text-text-muted uppercase tracking-wider">{card.label}</p>
+                <span className="text-2xl">{card.icon}</span>
+              </div>
+              <p className="font-display text-3xl font-bold text-text-primary mb-1">{card.value}</p>
+              <p className="text-xs text-text-muted leading-relaxed">{card.sub}</p>
             </motion.div>
           ))}
         </div>
@@ -208,7 +276,7 @@ export default function WarRoom() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-bg-border">
-                  {['Patient', 'Surgery', 'Day', 'Risk', 'HR', 'SpO₂', 'Last Contact', 'Action'].map(h => (
+                  {['Patient', 'Surgery', 'Day', 'Risk', 'Engagement', 'HR', 'SpO₂', 'Last Contact', 'Action'].map(h => (
                     <th key={h} className="px-4 py-2 text-left text-xs font-mono text-text-muted uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>

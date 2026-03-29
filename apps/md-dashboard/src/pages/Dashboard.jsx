@@ -12,6 +12,7 @@ import { DemoPanel } from '../components/demo/DemoPanel'
 import { PatientMap } from '../components/map/PatientMap'
 import { Badge } from '../components/ui/Badge'
 import { WS_BASE } from '../services/api'
+import { getAdherenceInsight, getAlertExplanation, getRecommendedNextAction } from '../lib/clinicalInsights'
 
 const VITAL_METRICS = [
   'heart_rate', 'hrv', 'spo2', 'respiratory_rate', 'skin_temperature',
@@ -43,6 +44,18 @@ function RiskBar({ score }) {
           transition={{ duration: 1, ease: 'easeOut' }}
         />
       </div>
+    </div>
+  )
+}
+
+function InsightCard({ title, badge, badgeVariant = 'muted', children }) {
+  return (
+    <div className="bg-bg-surface border border-bg-border rounded-xl p-4">
+      <div className="flex items-start justify-between gap-2 mb-3">
+        <p className="text-xs font-mono text-text-muted uppercase tracking-wider">{title}</p>
+        {badge ? <Badge variant={badgeVariant}>{badge}</Badge> : null}
+      </div>
+      {children}
     </div>
   )
 }
@@ -148,6 +161,9 @@ export default function Dashboard() {
 
   const criticalCount = patients.filter(p => p.alert?.type === 'critical').length
   const atRiskCount = patients.filter(p => p.alert?.type === 'yellow').length
+  const adherenceInsight = selectedPatient ? getAdherenceInsight(selectedPatient, currentVitals) : null
+  const alertExplanation = selectedPatient ? getAlertExplanation(selectedPatient, currentVitals) : null
+  const recommendedAction = selectedPatient ? getRecommendedNextAction(selectedPatient, currentVitals, adherenceInsight) : null
 
   return (
     <div className="flex flex-col h-screen bg-bg-base overflow-hidden">
@@ -285,6 +301,65 @@ export default function Dashboard() {
                   <p className="text-xs font-mono text-text-muted uppercase tracking-wider mb-2">Risk Score</p>
                   <RiskBar score={currentVitals.risk_score || 0} />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <InsightCard
+                  title="Recovery Engagement Risk"
+                  badge={`${adherenceInsight.score}/100`}
+                  badgeVariant={
+                    adherenceInsight.level === 'high'
+                      ? 'critical'
+                      : adherenceInsight.level === 'moderate'
+                      ? 'warning'
+                      : 'success'
+                  }
+                >
+                  <p className="text-sm text-text-primary mb-3">{adherenceInsight.summary}</p>
+                  <div className="space-y-1.5">
+                    {adherenceInsight.reasons.map((reason, index) => (
+                      <p key={index} className="text-xs text-text-secondary">• {reason}</p>
+                    ))}
+                  </div>
+                </InsightCard>
+
+                <InsightCard
+                  title="Why This Alert Fired"
+                  badge={`${alertExplanation.evidence.length} signals`}
+                  badgeVariant="warning"
+                >
+                  <div className="space-y-2">
+                    {alertExplanation.reasons.map((reason, index) => (
+                      <div key={index} className="rounded-lg bg-bg-base border border-bg-border p-2.5">
+                        <p className="text-xs text-text-primary leading-relaxed">{reason}</p>
+                        {alertExplanation.evidence[index] && (
+                          <p className="text-[11px] text-text-muted font-mono mt-1">{alertExplanation.evidence[index]}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </InsightCard>
+
+                <InsightCard
+                  title="Recommended Next Action"
+                  badge={recommendedAction.urgency.toUpperCase()}
+                  badgeVariant={
+                    recommendedAction.urgency === 'now'
+                      ? 'critical'
+                      : recommendedAction.urgency === 'today'
+                      ? 'warning'
+                      : 'info'
+                  }
+                >
+                  <p className="text-sm text-text-primary font-medium">{recommendedAction.label}</p>
+                  <p className="text-xs text-text-secondary mt-1 leading-relaxed">{recommendedAction.detail}</p>
+                  <p className="text-[11px] text-text-muted font-mono mt-3">Owner: {recommendedAction.owner}</p>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {recommendedAction.actions.map(action => (
+                      <Badge key={action} variant="info">{action}</Badge>
+                    ))}
+                  </div>
+                </InsightCard>
               </div>
 
               {/* Live Vitals Strip */}
