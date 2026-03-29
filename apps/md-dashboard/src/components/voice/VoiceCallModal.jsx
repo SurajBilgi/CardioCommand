@@ -212,8 +212,17 @@ function ModeBtn({ id, active, icon, label, sub, onClick }) {
 
 // ── Main Modal ─────────────────────────────────────────────────────────────────
 
-export function VoiceCallModal({ patient, currentVitals, outreachScript, onClose }) {
-  const [mode, setMode] = useState(VAPI_PUBLIC_KEY ? 'vapi-browser' : 'basic')
+export function VoiceCallModal({
+  patient,
+  currentVitals,
+  outreachScript,
+  initialPhone,
+  defaultMode,
+  autoStart = false,
+  onCallSent,
+  onClose,
+}) {
+  const [mode, setMode] = useState(defaultMode || (VAPI_PUBLIC_KEY ? 'vapi-browser' : 'basic'))
   const [callActive, setCallActive] = useState(false)
   const [callStatus, setCallStatus] = useState('idle')
   // idle | ringing | connected | agent-speaking | user-speaking | analyzing | complete | error
@@ -224,7 +233,7 @@ export function VoiceCallModal({ patient, currentVitals, outreachScript, onClose
   const [isMuted, setIsMuted] = useState(false)
   const [error, setError] = useState(null)
   const [script, setScript] = useState(null)
-  const [twilioPhone, setTwilioPhone] = useState(patient?.phone || '')
+  const [twilioPhone, setTwilioPhone] = useState(initialPhone || patient?.phone || '')
   const [phoneCallId, setPhoneCallId] = useState(null)
 
   const vapiRef = useRef(null)
@@ -234,14 +243,20 @@ export function VoiceCallModal({ patient, currentVitals, outreachScript, onClose
   const pollRef = useRef(null)
   const callDbIdRef = useRef(null)
   const callStartTimeRef = useRef(null)
+  const autoStartedRef = useRef(false)
 
   const isVapi = mode.startsWith('vapi')
   const isAgentSpeaking = callStatus === 'agent-speaking'
   const isUserSpeaking  = callStatus === 'user-speaking'
   const isSpeaking = isAgentSpeaking || isUserSpeaking
+  const customPromptPreview = outreachScript?.trim()
 
   // Auto-scroll transcript
   useEffect(() => { transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [transcript])
+
+  useEffect(() => {
+    setTwilioPhone(initialPhone || patient?.phone || '')
+  }, [initialPhone, patient?.phone])
 
   // Fetch script from backend
   useEffect(() => {
@@ -412,13 +427,17 @@ export function VoiceCallModal({ patient, currentVitals, outreachScript, onClose
       setError(e.message || 'Failed to start Vapi call')
       setCallStatus('error')
     }
-  }, [patient, attachVapiListeners, registerCallStart])
+  }, [patient, outreachScript, attachVapiListeners, registerCallStart])
 
   // ── START: Vapi phone call ───────────────────────────────────────────────────
   const startVapiPhoneCall = useCallback(async () => {
     setError(null)
+    setTranscript([])
+    setAnalysis(null)
     setCallStatus('ringing')
     try {
+      await registerCallStart('outbound')
+      callStartTimeRef.current = Date.now()
       const r = await fetch(`${BASE_URL}/voice/vapi/call`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -441,11 +460,17 @@ export function VoiceCallModal({ patient, currentVitals, outreachScript, onClose
           runAnalysis(info.transcript || [])
         }
       }, 5000)
+
+      onCallSent?.(data)
     } catch (e) {
-      setError(e.message)
+      setError(
+        e?.message === 'Failed to fetch'
+          ? `Cannot reach the backend API at ${BASE_URL}. Start the backend server and try the call again.`
+          : e.message
+      )
       setCallStatus('error')
     }
-  }, [patient, twilioPhone, runAnalysis])
+  }, [patient, twilioPhone, outreachScript, runAnalysis, registerCallStart, onCallSent])
 
   // ── START: Basic Web Speech API fallback ─────────────────────────────────────
   const startBasicCall = useCallback(async () => {
@@ -491,6 +516,14 @@ export function VoiceCallModal({ patient, currentVitals, outreachScript, onClose
     else if (mode === 'vapi-phone') startVapiPhoneCall()
     else startBasicCall()
   }
+
+  useEffect(() => {
+    if (!autoStart || autoStartedRef.current || callStatus !== 'idle') return
+    autoStartedRef.current = true
+    if (defaultMode === 'vapi-phone') startVapiPhoneCall()
+    else if (defaultMode === 'vapi-browser') startVapiBrowserCall()
+    else startBasicCall()
+  }, [autoStart, callStatus, defaultMode, startBasicCall, startVapiBrowserCall, startVapiPhoneCall])
 
   const handleReset = () => {
     setCallStatus('idle'); setTranscript([]); setAnalysis(null)
@@ -627,19 +660,30 @@ export function VoiceCallModal({ patient, currentVitals, outreachScript, onClose
         {/* ── Transcript / Analysis area ──────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-5 py-4 min-h-0">
           {callStatus === 'idle' ? (
-            /* Script preview */
-            <div className="space-y-2">
-              <p className="text-xs font-mono text-text-muted uppercase tracking-wider mb-3">Questions Cora will ask</p>
-              {(script?.questions || []).map((q, i) => (
-                <div key={q.id} className="flex gap-3 group">
-                  <span className="text-xs font-mono text-text-muted w-5 shrink-0 mt-0.5 group-hover:text-accent-primary transition-colors">{i + 1}</span>
-                  <div>
-                    <p className="text-xs font-mono text-accent-primary/70 mb-0.5">{q.category}</p>
-                    <p className="text-xs text-text-secondary leading-relaxed">{q.ask}</p>
-                  </div>
+            customPromptPreview ? (
+              <div className="space-y-3">
+                <p className="text-xs font-mono text-text-muted uppercase tracking-wider">Call plan Cora will follow</p>
+                <div className="rounded-xl border border-accent-primary/20 bg-accent-primary/6 px-4 py-3">
+                  <pre className="whitespace-pre-wrap text-xs leading-relaxed text-text-secondary font-sans">
+                    {customPromptPreview}
+                  </pre>
                 </div>
-              ))}
-            </div>
+              </div>
+            ) : (
+              /* Script preview */
+              <div className="space-y-2">
+                <p className="text-xs font-mono text-text-muted uppercase tracking-wider mb-3">Questions Cora will ask</p>
+                {(script?.questions || []).map((q, i) => (
+                  <div key={q.id} className="flex gap-3 group">
+                    <span className="text-xs font-mono text-text-muted w-5 shrink-0 mt-0.5 group-hover:text-accent-primary transition-colors">{i + 1}</span>
+                    <div>
+                      <p className="text-xs font-mono text-accent-primary/70 mb-0.5">{q.category}</p>
+                      <p className="text-xs text-text-secondary leading-relaxed">{q.ask}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
           ) : callStatus === 'complete' || callStatus === 'analyzing' ? (
             analysing ? (
               <div className="flex flex-col items-center justify-center py-12 gap-3">

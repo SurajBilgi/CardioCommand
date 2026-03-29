@@ -6,6 +6,7 @@ import { Badge } from '../ui/Badge'
 import { useSSE } from '../../hooks/useSSE'
 import { runAnalysis, getPreVisitBrief } from '../../services/api'
 import { VoiceCallModal } from '../voice/VoiceCallModal'
+import { RecoveryPlanModal } from './RecoveryPlanModal'
 
 const ALERT_COLORS = {
   critical: 'text-red-400',
@@ -28,6 +29,7 @@ export function AgentPanel({ patient, currentVitals }) {
   const [activeAction, setActiveAction] = useState(null)
   const [copied, setCopied] = useState(false)
   const [showVoiceCall, setShowVoiceCall] = useState(false)
+  const [showRecoveryPlan, setShowRecoveryPlan] = useState(false)
   const [outreachScript, setOutreachScript] = useState(null)
   const scrollRef = useRef(null)
 
@@ -85,6 +87,12 @@ export function AgentPanel({ patient, currentVitals }) {
       onClick: () => setShowVoiceCall(true),
     },
     {
+      id: 'recovery_plan',
+      label: 'Recovery Plan',
+      icon: '🎯',
+      onClick: () => setShowRecoveryPlan(true),
+    },
+    {
       id: 'pre_visit',
       label: 'Pre-Visit Brief',
       icon: '📋',
@@ -110,9 +118,18 @@ export function AgentPanel({ patient, currentVitals }) {
         />
       </AnimatePresence>
     )}
+    {showRecoveryPlan && (
+      <AnimatePresence>
+        <RecoveryPlanModal
+          patient={patient}
+          currentVitals={currentVitals}
+          onClose={() => setShowRecoveryPlan(false)}
+        />
+      </AnimatePresence>
+    )}
     <div className="flex flex-col h-full gap-3">
       {/* Action buttons */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 xl:grid-cols-3 gap-2">
         {actionButtons.map(btn => (
           <Button
             key={btn.id}

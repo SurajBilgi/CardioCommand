@@ -87,3 +87,35 @@ class CallRecord(Base):
                 self.created_at.isoformat() if self.created_at else None
             ),
         }
+
+
+class RecoveryPlan(Base):
+    """Stores the latest doctor-authored recovery plan and AI coaching prompt."""
+    __tablename__ = "recovery_plans"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    patient_id = Column(String, nullable=False, index=True)
+
+    doctor_plan = Column(Text, nullable=False)
+    generated_prompt = Column(Text, nullable=False)
+    scheduled_call_at = Column(DateTime, nullable=True)
+
+    created_at = Column(DateTime, default=_now)
+    updated_at = Column(DateTime, default=_now, onupdate=_now)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "patient_id": self.patient_id,
+            "doctor_plan": self.doctor_plan,
+            "generated_prompt": self.generated_prompt,
+            "scheduled_call_at": (
+                self.scheduled_call_at.isoformat() if self.scheduled_call_at else None
+            ),
+            "created_at": (
+                self.created_at.isoformat() if self.created_at else None
+            ),
+            "updated_at": (
+                self.updated_at.isoformat() if self.updated_at else None
+            ),
+        }

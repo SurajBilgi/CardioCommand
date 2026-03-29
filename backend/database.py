@@ -3,10 +3,12 @@ Database setup — SQLite via SQLAlchemy.
 DB file: backend/cardiocommand.db  (auto-created on first run)
 """
 import os
+from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
-DB_PATH = os.getenv("DATABASE_URL", "sqlite:///./cardiocommand.db")
+DEFAULT_DB_PATH = Path(__file__).with_name("cardiocommand.db").resolve()
+DB_PATH = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_DB_PATH}")
 
 engine = create_engine(
     DB_PATH,

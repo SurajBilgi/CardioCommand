@@ -6,6 +6,8 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from database import SessionLocal
+from models import RecoveryPlan
 from vitals_engine.simulator import simulator
 from risk_model.predictor import compute_risk_score, get_alert_level
 from prompts.library import PROMPTS
@@ -58,6 +60,25 @@ class RehabCheckinRequest(BaseModel):
 def _get_openai_client():
     from openai import OpenAI
     return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+
+def _get_latest_recovery_plan_guidance(patient_id: str) -> str:
+    db = SessionLocal()
+    try:
+        plan = (
+            db.query(RecoveryPlan)
+            .filter(RecoveryPlan.patient_id == patient_id)
+            .order_by(RecoveryPlan.updated_at.desc(), RecoveryPlan.created_at.desc())
+            .first()
+        )
+        if not plan:
+            return (
+                "No custom doctor recovery plan is active right now. When suggesting activity, "
+                "still make it feel like an easy real-life mission instead of generic exercise."
+            )
+        return plan.generated_prompt
+    finally:
+        db.close()
 
 
 async def _stream_agent_output(patient_id: str, patient_profile: dict, current_vitals: dict):
@@ -218,6 +239,7 @@ async def patient_chat(request: ChatRequest):
             client = _get_openai_client()
             p = request.patient_profile
             vitals = simulator.get_current(request.patient_id)
+            recovery_plan_guidance = _get_latest_recovery_plan_guidance(request.patient_id)
 
             vitals_summary = (
                 f"HR {vitals.get('heart_rate', '—')} bpm, "
@@ -232,6 +254,7 @@ async def patient_chat(request: ChatRequest):
                 vitals_summary=vitals_summary,
                 medications=[m["name"] for m in p.get("medications", [])],
                 risk_factors=p.get("comorbidities", []),
+                recovery_plan_guidance=recovery_plan_guidance,
             )
 
             messages = [{"role": "system", "content": system_prompt}]

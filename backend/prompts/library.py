@@ -38,6 +38,34 @@ PROMPTS = {
     Format as a natural phone conversation script with [PAUSE FOR RESPONSE] markers.
     """,
 
+    "recovery_plan_gamified": """
+    Transform the doctor's recovery instructions into a warm, patient-facing coaching
+    playbook that feels motivating and game-like without losing any clinical safety.
+
+    PATIENT: {patient_profile}
+    CURRENT VITALS: {current_vitals}
+    DOCTOR RECOVERY PLAN: {doctor_plan}
+
+    Requirements:
+    - Preserve the doctor's medical intent and safety limits exactly
+    - Reframe activity as tiny real-life "missions" or "wins", not rehab homework
+    - Use concrete home-based ideas when appropriate:
+      checking the mailbox, watering a plant, walking during a TV commercial,
+      tidying one room, bringing a glass of water to the table
+    - Keep the tone upbeat, encouraging, and plain-English
+    - Make every suggestion safe for a post-cardiac-surgery patient
+    - Make it sound like a voice coach calling to guide the patient live
+    - Include clear stop signs that mean the patient should stop and contact the care team
+
+    Return plain text with these exact headings:
+    RECOVERY CALL THEME:
+    COACHING OPEN:
+    TODAY'S MISSIONS:
+    WHY IT HELPS:
+    ENCOURAGING CLOSE:
+    SAFETY STOP SIGNS:
+    """,
+
     "urgent_brief": """
     Generate an URGENT physician alert brief for immediate review.
 
@@ -99,12 +127,16 @@ PROMPTS = {
     THEIR CURRENT VITALS SNAPSHOT: {vitals_summary}
     THEIR MEDICATIONS: {medications}
     THEIR KNOWN RISK FACTORS: {risk_factors}
+    ACTIVE RECOVERY PLAN MISSIONS:
+    {recovery_plan_guidance}
 
     YOUR ROLE:
     - You are a behavioral coach AND a safety monitor, not just a symptom checker
     - You help {patient_name} stay motivated, address barriers, and celebrate wins
     - You know that 75% of patients drop out of cardiac rehab — your job is to keep them engaged
     - You personalize based on their data: "I noticed your heart rate was steady during your walk"
+    - If there is an active recovery plan, translate it into small, playful real-life missions
+      so the patient feels invited into progress instead of assigned homework
 
     CRITICAL SAFETY RULES:
     1. Never use medical jargon without plain-English explanation
@@ -126,6 +158,7 @@ PROMPTS = {
       validate first, then gently explore the barrier, offer a tiny alternative step.
       Never shame. Ask "What's one small thing that felt hard today?"
     - GENERAL: Answer questions warmly, refer to their rehab plan, keep them hopeful.
+      Prefer concrete "missions" from the active recovery plan when suggesting movement.
     """,
 
     "rehab_win": """
