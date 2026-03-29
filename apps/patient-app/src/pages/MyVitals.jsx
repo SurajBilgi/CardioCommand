@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { fetchVitalsHistory, fetchWhoopStatus } from '../services/api'
-
-const PATIENT_ID = 'john-mercer'
+import {
+  DEMO_VITAL_TRENDS,
+  PATIENT_ID,
+} from '../data/patientDemoData'
 
 function VitalChart({ data, metric, label, unit, color, normalMin, normalMax, headline, trend }) {
   const chartData = data.slice(-60).map((d, i) => ({ index: i, value: d[metric] }))
@@ -114,8 +116,8 @@ export default function MyVitals() {
               color="#E8715A"
               normalMin={60}
               normalMax={100}
-              headline="Your heart rate has been a bit fast this week"
-              trend="up"
+              headline={DEMO_VITAL_TRENDS.heartRate.headline}
+              trend={DEMO_VITAL_TRENDS.heartRate.trend}
             />
             <VitalChart
               data={history}
@@ -125,8 +127,8 @@ export default function MyVitals() {
               color="#5A9E6F"
               normalMin={95}
               normalMax={100}
-              headline="Oxygen looking a bit lower than ideal — rest helps"
-              trend="down"
+              headline={DEMO_VITAL_TRENDS.oxygen.headline}
+              trend={DEMO_VITAL_TRENDS.oxygen.trend}
             />
             <VitalChart
               data={history}
@@ -136,8 +138,8 @@ export default function MyVitals() {
               color="#7B6CF6"
               normalMin={60}
               normalMax={90}
-              headline="Sleep has been disrupted — this is normal after surgery"
-              trend="stable"
+              headline={DEMO_VITAL_TRENDS.sleep.headline}
+              trend={DEMO_VITAL_TRENDS.sleep.trend}
             />
             <VitalChart
               data={history}
@@ -147,8 +149,8 @@ export default function MyVitals() {
               color="#F0A050"
               normalMin={1000}
               normalMax={5000}
-              headline="Activity is low — gentle walks help recovery"
-              trend="stable"
+              headline={DEMO_VITAL_TRENDS.steps.headline}
+              trend={DEMO_VITAL_TRENDS.steps.trend}
             />
           </>
         ) : (

@@ -5,17 +5,15 @@ import { clsx } from 'clsx'
 import { useVitalsWS } from '../hooks/useVitalsWS'
 import { fetchPatient, fetchWhoopStatus, getWhoopConnectUrl, sendRehabCheckin, syncWhoop } from '../services/api'
 import { DemoPanel } from '../components/demo/DemoPanel'
+import {
+  DEMO_INSURANCE,
+  DEMO_PATIENT,
+  PATIENT_ID,
+  REHAB_PROGRAM,
+  getGreeting,
+} from '../data/patientDemoData'
 import { StreakRewards } from '../components/streak/StreakRewards'
 import { PatientCallModal } from '../components/voice/PatientCallModal'
-
-const PATIENT_ID = 'john-mercer'
-
-// Demo: streak and rehab week
-const REHAB_STREAK = 4
-const REHAB_WEEK = 2
-const SESSIONS_THIS_WEEK = 2
-const SESSIONS_GOAL = 3
-const BEST_STREAK = 9
 
 function buildProgramLevels(programLength, currentStreak, bestStreak) {
   const levels = Array(programLength).fill(0)
@@ -154,7 +152,7 @@ function StreakCalendarModal({ streak, onClose, calendar }) {
           <div className="grid grid-cols-3 gap-2">
             {[
               { label: 'Current', value: `${streak}d` },
-              { label: 'Best', value: `${BEST_STREAK}d` },
+              { label: 'Best', value: `${REHAB_PROGRAM.bestStreak}d` },
               { label: 'Weeks On Track', value: `${calendar.activeWeeks}` },
             ].map(stat => (
               <div key={stat.label} className="rounded-[18px] border border-bg-border/70 bg-bg-elevated px-3 py-3 text-center">
@@ -306,7 +304,7 @@ function CelebrationOverlay({ onClose, onTalkToCora, streakDays }) {
         </p>
         <div className="bg-accent-calm/10 rounded-2xl px-4 py-3 mb-4">
           <p className="font-ui text-accent-calm font-semibold text-lg">🔥 {Math.max(1, streakDays)}-day streak!</p>
-          <p className="font-ui text-xs text-txt-secondary mt-0.5">That's your best streak yet, John!</p>
+          <p className="font-ui text-xs text-txt-secondary mt-0.5">That is another steady step forward, John.</p>
         </div>
         <p className="font-ui text-xs text-txt-muted mb-4">
           Cora noticed your heart rate stayed steady throughout — a great sign of progress.
@@ -405,24 +403,6 @@ async function readSseText(response) {
 
   return { text: fullText.trim(), rehab }
 }
-
-// Fallback demo insurance for when patient data hasn't loaded yet
-const DEMO_INSURANCE = {
-  provider: 'Medicare',
-  plan_name: 'Medicare Advantage — Blue Shield',
-  member_id: '1EG4-TE5-MK72',
-  group_number: 'GRP-00341',
-  coverage_type: 'Primary',
-  copay_office: '$20',
-  copay_specialist: '$50',
-  rehab_sessions_covered: 36,
-  rehab_sessions_used: 4,
-  deductible_met: true,
-  customer_service: '1-800-633-4227',
-  rx_bin: '610014',
-  rx_pcn: 'PRVDR',
-}
-
 function InsuranceCard({ insurance }) {
   const [expanded, setExpanded] = useState(false)
   const ins = insurance || DEMO_INSURANCE
@@ -631,13 +611,15 @@ export default function Home() {
 
   const hrStatus = hr !== '—' ? (hr > 100 ? 'warning' : 'ok') : 'muted'
   const spo2Status = spo2 !== '—' ? (spo2 < 95 ? 'warning' : 'ok') : 'muted'
-
+  const patientProfile = patient || DEMO_PATIENT
   const activeRehab = rehabState || patient?.rehab || {}
-  const rehabWeek = activeRehab.rehab_week ?? REHAB_WEEK
-  const streakDays = activeRehab.streak_days ?? REHAB_STREAK
-  const sessionsThisWeek = activeRehab.sessions_this_week ?? SESSIONS_THIS_WEEK
-  const sessionsGoal = activeRehab.sessions_goal ?? SESSIONS_GOAL
-  const rehabProgress = Math.min(100, (rehabWeek / 12) * 100)
+  const totalRehabWeeks = REHAB_PROGRAM.totalWeeks || 12
+  const rehabWeek = activeRehab.rehab_week ?? REHAB_PROGRAM.currentWeek
+  const streakDays = activeRehab.streak_days ?? REHAB_PROGRAM.currentStreak
+  const sessionsThisWeek = activeRehab.sessions_this_week ?? REHAB_PROGRAM.sessionsThisWeek
+  const sessionsGoal = activeRehab.sessions_goal ?? REHAB_PROGRAM.sessionsGoal
+  const rehabProgress = Math.min(100, (rehabWeek / totalRehabWeeks) * 100)
+  const weeksRemaining = Math.max(totalRehabWeeks - rehabWeek, 0)
 
   const moods = [
     { emoji: '😊', label: 'Great' },
@@ -646,16 +628,8 @@ export default function Home() {
     { emoji: '😰', label: 'Scared' },
   ]
 
-  const meds = patient?.medications?.slice(0, 5) || [
-    { name: 'Metoprolol', dose: '25mg', time: ['08:00'] },
-    { name: 'Lisinopril', dose: '10mg', time: ['08:00'] },
-    { name: 'Aspirin', dose: '81mg', time: ['08:00'] },
-    { name: 'Atorvastatin', dose: '40mg', time: ['21:00'] },
-    { name: 'Furosemide', dose: '20mg', time: ['08:00'] },
-  ]
-
-  const hour = new Date().getHours()
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  const meds = patient?.medications?.slice(0, 5) || DEMO_PATIENT.medications.slice(0, 5)
+  const greeting = getGreeting()
   const whoopLatest = whoopStatus?.latest || {}
   const whoopConnected = Boolean(whoopStatus?.connected)
   const whoopSleep = whoopLatest.sleep_hours ?? '—'
@@ -699,7 +673,7 @@ export default function Home() {
     setWearableMessageTone('warning')
   }
   const streakCalendar = useMemo(
-    () => buildStreakCalendar(new Date().getFullYear(), streakDays, rehabWeek, BEST_STREAK),
+    () => buildStreakCalendar(new Date().getFullYear(), streakDays, rehabWeek, REHAB_PROGRAM.bestStreak),
     [rehabWeek, streakDays]
   )
 
@@ -791,7 +765,7 @@ export default function Home() {
     <AnimatePresence>
       {showVoiceCall && (
         <PatientCallModal
-          patient={patient || { id: PATIENT_ID, name: 'John Mercer', surgery_type: 'CABG', days_post_op: 8 }}
+          patient={patientProfile}
           onClose={() => setShowVoiceCall(false)}
         />
       )}
@@ -891,7 +865,7 @@ export default function Home() {
         <div className="flex items-start justify-between">
           <div>
             <h1 className="font-display text-2xl text-txt-primary">
-              {greeting}, {patient?.name?.split(' ')[0] || 'John'} ☀️
+              {greeting}, {patientProfile.name.split(' ')[0]} ☀️
             </h1>
             <p className="font-ui text-sm text-txt-secondary mt-1">Week {rehabWeek} of your cardiac rehab</p>
           </div>
@@ -926,30 +900,51 @@ export default function Home() {
         </div>
 
         {/* 12-week Rehab Progress */}
-        <div className="mt-4">
-          <div className="flex justify-between text-xs font-ui text-txt-muted mb-1.5">
-            <span>Start</span>
-            <span className="text-accent-primary font-medium">Week {rehabWeek} ← you are here</span>
-            <span>Week 12</span>
+        <div className="mt-5 rounded-[24px] border border-bg-border bg-bg-elevated/70 px-4 py-4 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-display text-base text-txt-primary">Recovery progress</p>
+              <p className="font-ui text-sm text-txt-secondary mt-1">
+                Week {rehabWeek} of {totalRehabWeeks} in your cardiac rehab plan
+              </p>
+            </div>
+            <div className="shrink-0 rounded-2xl border border-accent-primary/15 bg-bg-surface px-3 py-2 text-right">
+              <p className="font-ui text-[11px] uppercase tracking-[0.14em] text-txt-muted">Plan done</p>
+              <p className="font-display text-lg leading-tight text-accent-primary">{Math.round(rehabProgress)}%</p>
+            </div>
           </div>
-          <div className="relative h-2 bg-bg-elevated rounded-full overflow-hidden">
-            <motion.div
-              className="absolute left-0 top-0 h-full bg-accent-primary rounded-full"
-              initial={{ width: 0 }}
-              animate={{ width: `${rehabProgress}%` }}
-              transition={{ duration: 1.2, ease: 'easeOut' }}
-            />
-            {[0, 2, 4, 8, 12].map(week => (
-              <div
-                key={week}
-                className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-bg-surface border-2 border-accent-primary"
-                style={{ left: `${(week / 12) * 100}%`, transform: 'translate(-50%, -50%)' }}
+
+          <div className="mt-4">
+            <div className="flex items-center justify-between text-[11px] font-ui font-medium text-txt-muted">
+              <span>Start</span>
+              <span>Midpoint</span>
+              <span>Week {totalRehabWeeks}</span>
+            </div>
+
+            <div className="mt-2 h-4 rounded-full border border-bg-border/80 bg-bg-surface p-1">
+              <motion.div
+                className="h-full rounded-full bg-accent-primary"
+                initial={{ width: 0 }}
+                animate={{ width: `${rehabProgress}%` }}
+                transition={{ duration: 1.2, ease: 'easeOut' }}
               />
-            ))}
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+              <span className="rounded-full bg-accent-primary/10 px-3 py-1.5 font-ui text-sm font-semibold text-accent-primary">
+                You are in Week {rehabWeek}
+              </span>
+              <span className="font-ui text-sm text-txt-secondary">
+                {sessionsThisWeek} of {sessionsGoal} sessions complete this week
+              </span>
+            </div>
+
+            <p className="mt-2 font-ui text-xs text-txt-muted">
+              {weeksRemaining > 0
+                ? `${weeksRemaining} weeks left after this week. Slow, steady progress is exactly the goal.`
+                : 'Final week. Keep the pace gentle and finish strong.'}
+            </p>
           </div>
-          <p className="text-xs font-ui text-txt-muted mt-1.5">
-            {sessionsThisWeek} of {sessionsGoal} sessions complete this week
-          </p>
         </div>
       </div>
 
@@ -999,7 +994,7 @@ export default function Home() {
                 <p className="font-ui text-xs text-txt-secondary mt-0.5">
                   {sessionActive
                     ? `Keep going! You're doing great — ${formatTime(sessionDuration)}`
-                    : 'Prescribed: 20-min walk at moderate pace'}
+                    : `Prescribed: ${REHAB_PROGRAM.prescribedWalkMinutes}-min walk at moderate pace`}
                 </p>
               </div>
               {sessionActive && (
@@ -1213,11 +1208,11 @@ export default function Home() {
             <div className="flex-1">
               <p className="font-display text-base text-txt-primary">Your Next Visit</p>
               <p className="font-ui text-sm text-txt-secondary mt-0.5">
-                {patient?.attending || 'Dr. Kavitha Rao'}
+                {patientProfile.attending}
               </p>
               <p className="font-ui text-sm font-semibold text-accent-primary mt-0.5">
-                {patient?.next_appointment
-                  ? new Date(patient.next_appointment).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                {patientProfile.next_appointment
+                  ? new Date(patientProfile.next_appointment).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                   : 'Tomorrow · 2:00 PM'}
               </p>
             </div>
@@ -1231,7 +1226,7 @@ export default function Home() {
         </motion.div>
 
         {/* Insurance Card */}
-        <InsuranceCard insurance={patient?.insurance} />
+        <InsuranceCard insurance={patientProfile.insurance} />
 
         {/* Talk to Cora — voice call card */}
         <motion.div

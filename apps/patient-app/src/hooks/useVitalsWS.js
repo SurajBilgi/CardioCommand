@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { WS_BASE } from '../services/api'
+import { DEMO_VITALS } from '../data/patientDemoData'
 
 const REFRESH_INTERVAL_MS = 2000
 
 const OFFLINE_VITALS = {
-  'john-mercer': { heart_rate: 96, spo2: 93, skin_temperature: 99.1, sleep_hours: 5.1, steps_today: 600, risk_score: 71, alert: { type: 'yellow', message: 'HR elevated.' } },
+  'john-mercer': DEMO_VITALS,
 }
 
 export function useVitalsWS(patientId) {
