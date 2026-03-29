@@ -23,6 +23,15 @@ const MOCK_PATIENTS = [
     ],
     home_location: { lat: 37.7749, lng: -122.4194 },
     risk_score: 71, active_scenario: 'early_warning',
+    rehab: {
+      rehab_week: 2,
+      streak_days: 4,
+      sessions_this_week: 2,
+      sessions_goal: 3,
+      last_checkin_mode: 'wall',
+      last_barrier_reason: 'Too tired today',
+      last_session_duration_seconds: 0,
+    },
     current_vitals: {
       heart_rate: 96, hrv: 18, spo2: 93, respiratory_rate: 19,
       skin_temperature: 99.1, ecg_rhythm: 'Sinus Tachycardia', afib_risk: 28,
@@ -45,6 +54,15 @@ const MOCK_PATIENTS = [
     ],
     home_location: { lat: 37.7849, lng: -122.4094 },
     risk_score: 94, active_scenario: 'afib_detected',
+    rehab: {
+      rehab_week: 1,
+      streak_days: 1,
+      sessions_this_week: 0,
+      sessions_goal: 3,
+      last_checkin_mode: 'wall',
+      last_barrier_reason: 'Worried it is not safe',
+      last_session_duration_seconds: 0,
+    },
     current_vitals: {
       heart_rate: 112, hrv: 8, spo2: 91, respiratory_rate: 22,
       skin_temperature: 99.4, ecg_rhythm: 'Atrial Fibrillation — DETECTED', afib_risk: 87,
@@ -66,6 +84,15 @@ const MOCK_PATIENTS = [
     ],
     home_location: { lat: 37.7649, lng: -122.4394 },
     risk_score: 55, active_scenario: 'pre_visit',
+    rehab: {
+      rehab_week: 3,
+      streak_days: 3,
+      sessions_this_week: 2,
+      sessions_goal: 3,
+      last_checkin_mode: 'win',
+      last_barrier_reason: '',
+      last_session_duration_seconds: 960,
+    },
     current_vitals: {
       heart_rate: 88, hrv: 28, spo2: 95, respiratory_rate: 16,
       skin_temperature: 98.4, ecg_rhythm: 'Normal Sinus Rhythm', afib_risk: 19,
@@ -87,6 +114,15 @@ const MOCK_PATIENTS = [
     ],
     home_location: { lat: 37.7949, lng: -122.3994 },
     risk_score: 14, active_scenario: 'full_recovery',
+    rehab: {
+      rehab_week: 5,
+      streak_days: 9,
+      sessions_this_week: 3,
+      sessions_goal: 3,
+      last_checkin_mode: 'win',
+      last_barrier_reason: '',
+      last_session_duration_seconds: 1260,
+    },
     current_vitals: {
       heart_rate: 68, hrv: 52, spo2: 98, respiratory_rate: 13,
       skin_temperature: 97.9, ecg_rhythm: 'Normal Sinus Rhythm', afib_risk: 6,
@@ -193,6 +229,18 @@ export const saveRecoveryPlan = (patientId, patientProfile, currentVitals, docto
     current_vitals: currentVitals,
     doctor_plan: doctorPlan,
   }).then(r => r.data)
+export const doctorChat = (patientProfile, currentVitals, message, analysisContext, conversationHistory) =>
+  fetch(`${BASE_URL}/ai/doctor-chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      patient_profile: patientProfile,
+      current_vitals: currentVitals,
+      message,
+      analysis_context: analysisContext,
+      conversation_history: conversationHistory,
+    }),
+  })
 
 export const generateSoapNote = (patientProfile, currentSoap, transcriptChunk) =>
   withFallback(

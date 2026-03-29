@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
-import { fetchVitalsHistory } from '../services/api'
+import { fetchVitalsHistory, fetchWhoopStatus } from '../services/api'
 
 const PATIENT_ID = 'john-mercer'
 
@@ -56,10 +56,15 @@ function VitalChart({ data, metric, label, unit, color, normalMin, normalMax, he
 export default function MyVitals() {
   const navigate = useNavigate()
   const [history, setHistory] = useState([])
+  const [whoopStatus, setWhoopStatus] = useState(null)
 
   useEffect(() => {
     fetchVitalsHistory(PATIENT_ID, 240).then(setHistory).catch(() => {})
+    fetchWhoopStatus(PATIENT_ID).then(setWhoopStatus).catch(() => {})
   }, [])
+
+  const whoopLatest = whoopStatus?.latest || {}
+  const whoopConnected = Boolean(whoopStatus?.connected)
 
   return (
     <div className="app-container pb-24">
@@ -70,6 +75,35 @@ export default function MyVitals() {
       </div>
 
       <div className="px-4 pt-4 space-y-4">
+        {whoopConnected && (
+          <motion.div
+            className="bg-bg-surface rounded-2xl border border-bg-border p-4 shadow-sm"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <p className="font-display text-sm text-txt-primary">Wearable Summary</p>
+            <p className="font-ui text-xs text-txt-secondary mt-1">Latest synced wearable summary for your care team</p>
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div className="bg-bg-elevated rounded-xl p-3">
+                <p className="font-ui text-xs text-txt-muted">Recovery</p>
+                <p className="font-display text-lg text-txt-primary mt-1">{whoopLatest.recovery_score ?? '—'}%</p>
+              </div>
+              <div className="bg-bg-elevated rounded-xl p-3">
+                <p className="font-ui text-xs text-txt-muted">Sleep</p>
+                <p className="font-display text-lg text-txt-primary mt-1">{whoopLatest.sleep_hours ?? '—'} hrs</p>
+              </div>
+              <div className="bg-bg-elevated rounded-xl p-3">
+                <p className="font-ui text-xs text-txt-muted">Resting HR</p>
+                <p className="font-display text-lg text-txt-primary mt-1">{whoopLatest.resting_heart_rate ?? '—'} bpm</p>
+              </div>
+              <div className="bg-bg-elevated rounded-xl p-3">
+                <p className="font-ui text-xs text-txt-muted">HRV</p>
+                <p className="font-display text-lg text-txt-primary mt-1">{whoopLatest.hrv_ms ?? '—'} ms</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {history.length > 0 ? (
           <>
             <VitalChart

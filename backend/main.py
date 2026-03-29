@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import create_tables
-from routers import patients, vitals, ai, demo, voice, recovery_plans
+from routers import patients, vitals, ai, demo, voice, recovery_plans, whoop
 from routers import calls
 
 app = FastAPI(title="CardioCommand API", version="1.0.0")
@@ -28,6 +28,7 @@ app.include_router(demo.router,     prefix="/demo",     tags=["Demo"])
 app.include_router(voice.router,    prefix="/voice",    tags=["Voice"])
 app.include_router(calls.router,    prefix="/calls",    tags=["Calls"])
 app.include_router(recovery_plans.router, prefix="/recovery-plans", tags=["Recovery Plans"])
+app.include_router(whoop.router,    prefix="/integrations/whoop", tags=["WHOOP"])
 
 
 @app.on_event("startup")
