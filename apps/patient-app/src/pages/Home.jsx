@@ -5,17 +5,15 @@ import { clsx } from 'clsx'
 import { useVitalsWS } from '../hooks/useVitalsWS'
 import { fetchPatient } from '../services/api'
 import { DemoPanel } from '../components/demo/DemoPanel'
+import {
+  DEMO_INSURANCE,
+  DEMO_PATIENT,
+  PATIENT_ID,
+  REHAB_PROGRAM,
+  getGreeting,
+} from '../data/patientDemoData'
 import { StreakRewards } from '../components/streak/StreakRewards'
 import { PatientCallModal } from '../components/voice/PatientCallModal'
-
-const PATIENT_ID = 'john-mercer'
-
-// Demo: streak and rehab week
-const REHAB_STREAK = 4
-const REHAB_WEEK = 2
-const SESSIONS_THIS_WEEK = 2
-const SESSIONS_GOAL = 3
-const BEST_STREAK = 9
 
 function buildProgramLevels(programLength, currentStreak, bestStreak) {
   const levels = Array(programLength).fill(0)
@@ -154,7 +152,7 @@ function StreakCalendarModal({ streak, onClose, calendar }) {
           <div className="grid grid-cols-3 gap-2">
             {[
               { label: 'Current', value: `${streak}d` },
-              { label: 'Best', value: `${BEST_STREAK}d` },
+              { label: 'Best', value: `${REHAB_PROGRAM.bestStreak}d` },
               { label: 'Weeks On Track', value: `${calendar.activeWeeks}` },
             ].map(stat => (
               <div key={stat.label} className="rounded-[18px] border border-bg-border/70 bg-bg-elevated px-3 py-3 text-center">
@@ -305,8 +303,8 @@ function CelebrationOverlay({ onClose, onTalkToCora }) {
           You completed today's rehab session.
         </p>
         <div className="bg-accent-calm/10 rounded-2xl px-4 py-3 mb-4">
-          <p className="font-ui text-accent-calm font-semibold text-lg">🔥 {REHAB_STREAK + 1}-day streak!</p>
-          <p className="font-ui text-xs text-txt-secondary mt-0.5">That's your best streak yet, John!</p>
+          <p className="font-ui text-accent-calm font-semibold text-lg">🔥 {REHAB_PROGRAM.currentStreak + 1}-day streak!</p>
+          <p className="font-ui text-xs text-txt-secondary mt-0.5">That is another steady step forward, John.</p>
         </div>
         <p className="font-ui text-xs text-txt-muted mb-4">
           Cora noticed your heart rate stayed steady throughout — a great sign of progress.
@@ -326,23 +324,6 @@ function CelebrationOverlay({ onClose, onTalkToCora }) {
       </motion.div>
     </motion.div>
   )
-}
-
-// Fallback demo insurance for when patient data hasn't loaded yet
-const DEMO_INSURANCE = {
-  provider: 'Medicare',
-  plan_name: 'Medicare Advantage — Blue Shield',
-  member_id: '1EG4-TE5-MK72',
-  group_number: 'GRP-00341',
-  coverage_type: 'Primary',
-  copay_office: '$20',
-  copay_specialist: '$50',
-  rehab_sessions_covered: 36,
-  rehab_sessions_used: 4,
-  deductible_met: true,
-  customer_service: '1-800-633-4227',
-  rx_bin: '610014',
-  rx_pcn: 'PRVDR',
 }
 
 function InsuranceCard({ insurance }) {
@@ -519,9 +500,12 @@ export default function Home() {
 
   const hrStatus = hr !== '—' ? (hr > 100 ? 'warning' : 'ok') : 'muted'
   const spo2Status = spo2 !== '—' ? (spo2 < 95 ? 'warning' : 'ok') : 'muted'
+  const patientProfile = patient || DEMO_PATIENT
 
-  // Rehab progress (12-week journey)
-  const rehabProgress = Math.min(100, (REHAB_WEEK / 12) * 100)
+  const rehabWeeks = Array.from(
+    { length: REHAB_PROGRAM.totalWeeks },
+    (_, index) => index + 1
+  )
 
   const moods = [
     { emoji: '😊', label: 'Great' },
@@ -530,18 +514,15 @@ export default function Home() {
     { emoji: '😰', label: 'Scared' },
   ]
 
-  const meds = patient?.medications?.slice(0, 5) || [
-    { name: 'Metoprolol', dose: '25mg', time: ['08:00'] },
-    { name: 'Lisinopril', dose: '10mg', time: ['08:00'] },
-    { name: 'Aspirin', dose: '81mg', time: ['08:00'] },
-    { name: 'Atorvastatin', dose: '40mg', time: ['21:00'] },
-    { name: 'Furosemide', dose: '20mg', time: ['08:00'] },
-  ]
-
-  const hour = new Date().getHours()
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  const meds = patientProfile.medications.slice(0, 5)
+  const greeting = getGreeting()
   const streakCalendar = useMemo(
-    () => buildStreakCalendar(new Date().getFullYear(), REHAB_STREAK, REHAB_WEEK, BEST_STREAK),
+    () => buildStreakCalendar(
+      new Date().getFullYear(),
+      REHAB_PROGRAM.currentStreak,
+      REHAB_PROGRAM.currentWeek,
+      REHAB_PROGRAM.bestStreak
+    ),
     []
   )
 
@@ -586,7 +567,7 @@ export default function Home() {
     <AnimatePresence>
       {showVoiceCall && (
         <PatientCallModal
-          patient={patient || { id: PATIENT_ID, name: 'John Mercer', surgery_type: 'CABG', days_post_op: 8 }}
+          patient={patientProfile}
           onClose={() => setShowVoiceCall(false)}
         />
       )}
@@ -604,7 +585,7 @@ export default function Home() {
     <AnimatePresence>
       {showStreakCalendar && (
         <StreakCalendarModal
-          streak={REHAB_STREAK}
+          streak={REHAB_PROGRAM.currentStreak}
           calendar={streakCalendar}
           onClose={() => setShowStreakCalendar(false)}
         />
@@ -617,9 +598,9 @@ export default function Home() {
         <div className="flex items-start justify-between">
           <div>
             <h1 className="font-display text-2xl text-txt-primary">
-              {greeting}, {patient?.name?.split(' ')[0] || 'John'} ☀️
+              {greeting}, {patientProfile.name.split(' ')[0]} ☀️
             </h1>
-            <p className="font-ui text-sm text-txt-secondary mt-1">Week {REHAB_WEEK} of your cardiac rehab</p>
+            <p className="font-ui text-sm text-txt-secondary mt-1">Week {REHAB_PROGRAM.currentWeek} of your cardiac rehab</p>
           </div>
           <div className="flex items-center gap-2">
             {/* Streak badge */}
@@ -629,7 +610,7 @@ export default function Home() {
               title="View recovery streak"
             >
               <span className="text-lg leading-none">🔥</span>
-              <span className="font-ui text-xs font-bold text-amber-600">{REHAB_STREAK}d</span>
+              <span className="font-ui text-xs font-bold text-amber-600">{REHAB_PROGRAM.currentStreak}d</span>
             </button>
             {/* Voice call button */}
             <motion.button
@@ -653,29 +634,31 @@ export default function Home() {
 
         {/* 12-week Rehab Progress */}
         <div className="mt-4">
-          <div className="flex justify-between text-xs font-ui text-txt-muted mb-1.5">
+          <div className="flex justify-between text-xs font-ui text-txt-muted mb-2">
             <span>Start</span>
-            <span className="text-accent-primary font-medium">Week {REHAB_WEEK} ← you are here</span>
-            <span>Week 12</span>
+            <span>Week {REHAB_PROGRAM.totalWeeks}</span>
           </div>
-          <div className="relative h-2 bg-bg-elevated rounded-full overflow-hidden">
-            <motion.div
-              className="absolute left-0 top-0 h-full bg-accent-primary rounded-full"
-              initial={{ width: 0 }}
-              animate={{ width: `${rehabProgress}%` }}
-              transition={{ duration: 1.2, ease: 'easeOut' }}
-            />
-            {[0, 2, 4, 8, 12].map(week => (
+          <div className="grid grid-cols-12 gap-1.5">
+            {rehabWeeks.map(week => (
               <div
                 key={week}
-                className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-bg-surface border-2 border-accent-primary"
-                style={{ left: `${(week / 12) * 100}%`, transform: 'translate(-50%, -50%)' }}
+                className={clsx(
+                  'h-2 rounded-full transition-colors',
+                  week < REHAB_PROGRAM.currentWeek && 'bg-accent-primary',
+                  week === REHAB_PROGRAM.currentWeek && 'bg-accent-primary ring-2 ring-accent-primary/20 ring-offset-2 ring-offset-bg-surface',
+                  week > REHAB_PROGRAM.currentWeek && 'bg-bg-elevated'
+                )}
               />
             ))}
           </div>
-          <p className="text-xs font-ui text-txt-muted mt-1.5">
-            {SESSIONS_THIS_WEEK} of {SESSIONS_GOAL} sessions complete this week
-          </p>
+          <div className="flex items-center justify-between gap-3 mt-2">
+            <p className="text-xs font-ui text-accent-primary font-medium">
+              Week {REHAB_PROGRAM.currentWeek} is highlighted
+            </p>
+            <p className="text-xs font-ui text-txt-muted text-right">
+              {REHAB_PROGRAM.sessionsThisWeek} of {REHAB_PROGRAM.sessionsGoal} sessions complete this week
+            </p>
+          </div>
         </div>
       </div>
 
@@ -702,7 +685,7 @@ export default function Home() {
                 <p className="font-ui text-xs text-txt-secondary mt-0.5">
                   {sessionActive
                     ? `Keep going! You're doing great — ${formatTime(sessionDuration)}`
-                    : 'Prescribed: 20-min walk at moderate pace'}
+                    : `Prescribed: ${REHAB_PROGRAM.prescribedWalkMinutes}-min walk at moderate pace`}
                 </p>
               </div>
               {sessionActive && (
@@ -765,7 +748,7 @@ export default function Home() {
 
             {!sessionActive && (
               <p className="text-xs font-ui text-txt-muted text-center mt-2">
-                Completed {SESSIONS_THIS_WEEK}/{SESSIONS_GOAL} sessions this week
+                Completed {REHAB_PROGRAM.sessionsThisWeek}/{REHAB_PROGRAM.sessionsGoal} sessions this week
               </p>
             )}
           </div>
@@ -906,11 +889,11 @@ export default function Home() {
             <div className="flex-1">
               <p className="font-display text-base text-txt-primary">Your Next Visit</p>
               <p className="font-ui text-sm text-txt-secondary mt-0.5">
-                {patient?.attending || 'Dr. Kavitha Rao'}
+                {patientProfile.attending}
               </p>
               <p className="font-ui text-sm font-semibold text-accent-primary mt-0.5">
-                {patient?.next_appointment
-                  ? new Date(patient.next_appointment).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                {patientProfile.next_appointment
+                  ? new Date(patientProfile.next_appointment).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                   : 'Tomorrow · 2:00 PM'}
               </p>
             </div>
@@ -924,7 +907,7 @@ export default function Home() {
         </motion.div>
 
         {/* Insurance Card */}
-        <InsuranceCard insurance={patient?.insurance} />
+        <InsuranceCard insurance={patientProfile.insurance} />
 
         {/* Talk to Cora — voice call card */}
         <motion.div

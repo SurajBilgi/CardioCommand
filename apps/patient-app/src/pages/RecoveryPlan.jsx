@@ -2,20 +2,25 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { clsx } from 'clsx'
+import {
+  DEMO_MEDICATIONS,
+  DEMO_PATIENT,
+  REHAB_PROGRAM,
+} from '../data/patientDemoData'
 
 const PLAN_SECTIONS = [
   {
     id: 'what_happened',
     icon: '🏥',
     title: 'What Happened in Your Surgery',
-    content: `You had a Coronary Artery Bypass Graft (CABG) — we call it "bypass surgery." \n\nYour heart had arteries that were blocked, which meant blood couldn't flow well to your heart muscle. Your surgeon used a blood vessel from your leg to create a new path around the blockage — like building a detour road when the main highway is jammed.\n\nYour heart is now getting much better blood flow. The surgery went well.`,
+    content: `You had a ${DEMO_PATIENT.surgery_type} — we call it "bypass surgery." \n\nYour heart had arteries that were blocked, which meant blood could not flow well to your heart muscle. Your surgeon used a blood vessel from your leg to create a new path around the blockage — like building a detour road when the main highway is jammed.\n\nYour heart is now getting much better blood flow. The surgery went well.`,
     color: 'border-accent-primary',
   },
   {
     id: 'this_week',
     icon: '📅',
     title: 'What to Expect This Week',
-    content: `**Day 8 (Today):**\nFatigue is normal. Short walks around the house are good. Heart rate may still be a little high — this is expected.\n\n**Days 9-10:**\nYou may start to feel slightly more energetic. Continue short walks. Call us if you notice increased swelling in your ankles.\n\n**Days 11-14:**\nMost people feel meaningfully better by now. Try 10-15 minute walks. You can do light activities like cooking or moving slowly around the house.\n\n**Week 3-4:**\nYou should feel much more like yourself. Walking 20-30 minutes daily is the goal. We'll discuss returning to driving at your next visit.`,
+    content: `**Day ${DEMO_PATIENT.days_post_op} (Today):**\nFatigue is normal. A ${REHAB_PROGRAM.prescribedWalkMinutes}-minute gentle walk is enough for today.\n\n**Days 9-10:**\nYou may start to feel slightly more energetic. Continue short walks and call us if your ankle swelling gets worse.\n\n**Days 11-14:**\nMost people feel meaningfully better by now. Try 10-15 minute walks and light activities around the house.\n\n**Week ${REHAB_PROGRAM.currentWeek + 1}-${REHAB_PROGRAM.currentWeek + 2}:**\nYou should feel more like yourself. Walking 20-30 minutes daily becomes the goal, and we will talk about driving at your next visit.`,
     color: 'border-accent-warm',
   },
   {
@@ -23,38 +28,12 @@ const PLAN_SECTIONS = [
     icon: '💊',
     title: 'Your Medications',
     content: null,
-    medications: [
-      {
-        name: 'Metoprolol 25mg',
-        why: 'Keeps your heart rate from going too fast and reduces stress on your heart.',
-        sideEffects: 'May make you feel tired or slightly lightheaded. Don\'t skip doses.',
-        timing: 'Morning and evening (8am, 8pm)',
-      },
-      {
-        name: 'Lisinopril 10mg',
-        why: 'Helps your heart muscle recover and keeps blood pressure in a safe range.',
-        sideEffects: 'May cause a dry cough in some people. If this bothers you, tell us.',
-        timing: 'Once daily in the morning',
-      },
-      {
-        name: 'Aspirin 81mg',
-        why: 'Prevents blood clots and keeps the new bypass grafts open. Very important!',
-        sideEffects: 'May cause mild stomach upset — take with food.',
-        timing: 'Once daily in the morning',
-      },
-      {
-        name: 'Atorvastatin 40mg',
-        why: 'Stabilizes the plaques in your arteries and lowers cholesterol.',
-        sideEffects: 'Rarely causes muscle aches. Tell us if your muscles feel unusually sore.',
-        timing: 'Once daily at bedtime (9pm)',
-      },
-      {
-        name: 'Furosemide 20mg',
-        why: 'A water pill that helps remove extra fluid from your body. Helps reduce swelling.',
-        sideEffects: 'You\'ll urinate more. Take in the morning so you don\'t wake up at night.',
-        timing: 'Once daily in the morning',
-      },
-    ],
+    medications: DEMO_MEDICATIONS.map(med => ({
+      name: `${med.name} ${med.dose}`,
+      why: med.why,
+      sideEffects: med.sideEffects,
+      timing: med.timingLabel,
+    })),
     color: 'border-accent-calm',
   },
   {

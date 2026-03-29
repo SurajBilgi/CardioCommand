@@ -3,41 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { clsx } from 'clsx'
 import { sendChat, fetchPatient } from '../services/api'
-
-const PATIENT_ID = 'john-mercer'
-
-const SEED_MESSAGES = [
-  {
-    id: '1',
-    role: 'cora',
-    message: "Good morning, John! 👋 I'm Cora, your cardiac rehab coach. You're in Week 2 of your 12-week program — and you've already built a 4-day streak. How are you feeling today?",
-    timestamp: new Date(Date.now() - 120000).toISOString(),
-  },
-  {
-    id: '2',
-    role: 'patient',
-    message: "Honestly, I'm really tired. I don't know if I have the energy for a walk today.",
-    timestamp: new Date(Date.now() - 110000).toISOString(),
-  },
-  {
-    id: '3',
-    role: 'cora',
-    message: "That's completely understandable — Week 2 is where it gets real, and fatigue is one of the most common barriers I hear. You're not alone in this.\n\nCan I ask — is it more of a physical tired, or does it feel more like \"I just don't feel up to it\" emotionally?",
-    timestamp: new Date(Date.now() - 100000).toISOString(),
-  },
-  {
-    id: '4',
-    role: 'patient',
-    message: "More emotional I think. I'm just worried if pushing myself is actually safe after the surgery.",
-    timestamp: new Date(Date.now() - 90000).toISOString(),
-  },
-  {
-    id: '5',
-    role: 'cora',
-    message: "That fear makes complete sense — and it shows how much you care about your recovery. That's actually a sign of wisdom, not weakness.\n\nHere's what your data tells me: your heart rate has been stable, your oxygen has been great, and Dr. Rao specifically designed this program for where you are right now. Even a 10-minute gentle walk is safe and counts.\n\nWhat if we tried just 10 minutes today? Not a full session — just 10 minutes. You can stop anytime. 💙",
-    timestamp: new Date(Date.now() - 80000).toISOString(),
-  },
-]
+import {
+  DEMO_PATIENT,
+  PATIENT_ID,
+  buildDemoChatSeedMessages,
+} from '../data/patientDemoData'
 
 function ChatBubble({ message }) {
   const isPatient = message.role === 'patient'
@@ -93,7 +63,7 @@ function TypingIndicator() {
 
 export default function Chat() {
   const navigate = useNavigate()
-  const [messages, setMessages] = useState(SEED_MESSAGES)
+  const [messages, setMessages] = useState(() => buildDemoChatSeedMessages())
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
   const [streamingMsg, setStreamingMsg] = useState('')
@@ -178,7 +148,7 @@ export default function Chat() {
     setStreamingMsg('')
 
     try {
-      const response = await sendChat(PATIENT_ID, userMsg.message, patient || {}, history)
+      const response = await sendChat(PATIENT_ID, userMsg.message, patient || DEMO_PATIENT, history)
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
