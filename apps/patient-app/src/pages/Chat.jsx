@@ -10,31 +10,31 @@ const SEED_MESSAGES = [
   {
     id: '1',
     role: 'cora',
-    message: "Good morning! I'm Cora, your recovery companion. How are you feeling on Day 8 of your recovery from bypass surgery?",
+    message: "Good morning, John! 👋 I'm Cora, your cardiac rehab coach. You're in Week 2 of your 12-week program — and you've already built a 4-day streak. How are you feeling today?",
     timestamp: new Date(Date.now() - 120000).toISOString(),
   },
   {
     id: '2',
     role: 'patient',
-    message: "I'm feeling pretty tired today. More than usual. And my chest feels a bit tight.",
+    message: "Honestly, I'm really tired. I don't know if I have the energy for a walk today.",
     timestamp: new Date(Date.now() - 110000).toISOString(),
   },
   {
     id: '3',
     role: 'cora',
-    message: "Thank you for telling me that — it takes courage to speak up about how you're really feeling. Some fatigue at Day 8 is normal after bypass surgery.\n\nWhen you say your chest feels tight, can you describe it? Is it like pressure, soreness near your incision, or something different?",
+    message: "That's completely understandable — Week 2 is where it gets real, and fatigue is one of the most common barriers I hear. You're not alone in this.\n\nCan I ask — is it more of a physical tired, or does it feel more like \"I just don't feel up to it\" emotionally?",
     timestamp: new Date(Date.now() - 100000).toISOString(),
   },
   {
     id: '4',
     role: 'patient',
-    message: "More like a soreness. Not crushing or anything scary. Around where they did the surgery.",
+    message: "More emotional I think. I'm just worried if pushing myself is actually safe after the surgery.",
     timestamp: new Date(Date.now() - 90000).toISOString(),
   },
   {
     id: '5',
     role: 'cora',
-    message: "That makes sense — incision soreness at Day 8 is very common and expected as your body heals.\n\nI do want to flag that your heart rate has been a little faster than usual, and your oxygen levels dipped slightly overnight. Your care team has been notified. 💙\n\nFor today: rest well, stay hydrated, and take your Metoprolol on time.\n\nIf the soreness gets worse or spreads to your arm or jaw, call us immediately, okay?",
+    message: "That fear makes complete sense — and it shows how much you care about your recovery. That's actually a sign of wisdom, not weakness.\n\nHere's what your data tells me: your heart rate has been stable, your oxygen has been great, and Dr. Rao specifically designed this program for where you are right now. Even a 10-minute gentle walk is safe and counts.\n\nWhat if we tried just 10 minutes today? Not a full session — just 10 minutes. You can stop anytime. 💙",
     timestamp: new Date(Date.now() - 80000).toISOString(),
   },
 ]
@@ -99,8 +99,59 @@ export default function Chat() {
   const [streamingMsg, setStreamingMsg] = useState('')
   const [escalated, setEscalated] = useState(false)
   const [patient, setPatient] = useState(null)
+  const [listening, setListening] = useState(false)
+  const [speechSupported, setSpeechSupported] = useState(false)
   const chatEndRef = useRef(null)
   const inputRef = useRef(null)
+  const recognitionRef = useRef(null)
+
+  // Check if Web Speech API is available
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (SpeechRecognition) {
+      setSpeechSupported(true)
+      const recognition = new SpeechRecognition()
+      recognition.continuous = false
+      recognition.interimResults = true
+      recognition.lang = 'en-US'
+
+      recognition.onresult = (event) => {
+        let interim = ''
+        let final = ''
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            final += event.results[i][0].transcript
+          } else {
+            interim += event.results[i][0].transcript
+          }
+        }
+        // Show interim results live in the input, commit final
+        setInput(final || interim)
+      }
+
+      recognition.onend = () => {
+        setListening(false)
+      }
+
+      recognition.onerror = () => {
+        setListening(false)
+      }
+
+      recognitionRef.current = recognition
+    }
+  }, [])
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) return
+    if (listening) {
+      recognitionRef.current.stop()
+      setListening(false)
+    } else {
+      setInput('')
+      recognitionRef.current.start()
+      setListening(true)
+    }
+  }
 
   useEffect(() => {
     fetchPatient(PATIENT_ID).then(setPatient).catch(() => {})
@@ -192,7 +243,7 @@ export default function Chat() {
             <span>❤️</span>
           </div>
           <div>
-            <p className="font-display text-sm text-txt-primary">Cora — Your Recovery Guide</p>
+            <p className="font-display text-sm text-txt-primary">Cora — Your Cardiac Rehab Coach</p>
             <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-accent-calm" />
               <p className="font-ui text-xs text-txt-secondary">Online</p>
@@ -239,8 +290,52 @@ export default function Chat() {
       </div>
 
       {/* Input */}
-      <div className="bg-bg-surface border-t border-bg-border px-4 py-3 shrink-0 pb-safe" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
+      <div className="bg-bg-surface border-t border-bg-border px-4 py-3 shrink-0" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
+        {/* Listening indicator */}
+        <AnimatePresence>
+          {listening && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-2 flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2"
+            >
+              <motion.div
+                className="w-2.5 h-2.5 rounded-full bg-red-500"
+                animate={{ scale: [1, 1.4, 1] }}
+                transition={{ duration: 0.8, repeat: Infinity }}
+              />
+              <p className="font-ui text-xs text-red-600 font-medium">Listening… speak clearly and slowly</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="flex gap-2 items-end">
+          {/* Mic button — large, easy to tap for elderly users */}
+          {speechSupported && (
+            <motion.button
+              onClick={toggleListening}
+              whileTap={{ scale: 0.9 }}
+              className={clsx(
+                'w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-colors',
+                listening
+                  ? 'bg-red-500 text-white shadow-lg shadow-red-200'
+                  : 'bg-bg-elevated border-2 border-bg-border text-txt-secondary hover:border-accent-calm hover:text-accent-calm'
+              )}
+              title={listening ? 'Tap to stop' : 'Tap to speak'}
+            >
+              {listening ? (
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+              )}
+            </motion.button>
+          )}
+
           <textarea
             ref={inputRef}
             value={input}
@@ -251,19 +346,32 @@ export default function Chat() {
                 sendMessage()
               }
             }}
-            placeholder="Message Cora..."
+            placeholder={listening ? 'Listening…' : 'Tap 🎤 to speak or type here'}
             rows={1}
-            className="flex-1 bg-bg-elevated border border-bg-border rounded-xl px-4 py-3 font-ui text-sm text-txt-primary placeholder-txt-muted outline-none focus:border-accent-primary/50 resize-none"
+            className={clsx(
+              'flex-1 bg-bg-elevated border rounded-xl px-4 py-3 font-ui text-sm text-txt-primary placeholder-txt-muted outline-none resize-none transition-colors',
+              listening ? 'border-red-300 bg-red-50' : 'border-bg-border focus:border-accent-primary/50'
+            )}
             style={{ maxHeight: '120px' }}
           />
-          <button
+          <motion.button
             onClick={sendMessage}
             disabled={!input.trim() || streaming}
-            className="w-10 h-10 rounded-xl bg-accent-primary text-white flex items-center justify-center disabled:opacity-50 shrink-0"
+            whileTap={{ scale: 0.9 }}
+            className="w-12 h-12 rounded-2xl bg-accent-primary text-white flex items-center justify-center disabled:opacity-40 shrink-0 shadow-md"
           >
-            <span className="text-sm">→</span>
-          </button>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+            </svg>
+          </motion.button>
         </div>
+
+        {/* Helper hint for first-time users */}
+        {speechSupported && !listening && !input && (
+          <p className="font-ui text-xs text-txt-muted text-center mt-2">
+            Tap the mic 🎤 to speak — no typing needed
+          </p>
+        )}
       </div>
     </div>
   )

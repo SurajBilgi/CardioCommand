@@ -118,7 +118,7 @@ export default function WarRoom() {
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Stat Cards */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             { label: 'Active Patients', value: patients.length, icon: '👥', sub: 'Under monitoring' },
             { label: 'Require Action', value: highRiskCount, icon: '🚨', sub: `${criticalCount} critical, ${highRiskCount - criticalCount} high`, variant: highRiskCount > 0 ? 'red' : 'green' },
@@ -146,7 +146,7 @@ export default function WarRoom() {
         {/* Donut Chart */}
         <div className="bg-bg-surface border border-bg-border rounded-xl p-5">
           <p className="text-xs font-mono text-text-muted uppercase tracking-wider mb-4">Risk Distribution</p>
-          <div className="flex items-center gap-8">
+          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-8">
             <ResponsiveContainer width={200} height={160}>
               <PieChart>
                 <Pie
@@ -191,7 +191,7 @@ export default function WarRoom() {
               <span className="text-xs font-mono text-red-400">LIVE</span>
             </span>
           </div>
-          <div style={{ height: 420 }}>
+          <div className="h-48 md:h-64 lg:h-[420px]">
             <PatientMap
               selectedPatientId={selectedPatientId}
               onSelectPatient={setSelectedPatientId}

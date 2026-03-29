@@ -22,7 +22,22 @@
       "active_scenario": "early_warning",
       "phone": "+1-555-0142",
       "emergency_contact": "Mary Mercer (wife) — +1-555-0143",
-      "home_location": { "lat": 37.7749, "lng": -122.4194, "address": "1842 Oak Street, San Francisco, CA" }
+      "home_location": { "lat": 37.7749, "lng": -122.4194, "address": "1842 Oak Street, San Francisco, CA" },
+      "insurance": {
+        "provider": "Medicare",
+        "plan_name": "Medicare Advantage — Blue Shield",
+        "member_id": "1EG4-TE5-MK72",
+        "group_number": "GRP-00341",
+        "coverage_type": "Primary",
+        "copay_office": "$20",
+        "copay_specialist": "$50",
+        "rehab_sessions_covered": 36,
+        "rehab_sessions_used": 4,
+        "deductible_met": true,
+        "customer_service": "1-800-633-4227",
+        "rx_bin": "610014",
+        "rx_pcn": "PRVDR"
+      }
     },
     {
       "id": "rosa-delgado",

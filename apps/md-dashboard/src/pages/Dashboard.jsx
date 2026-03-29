@@ -32,7 +32,7 @@ function RiskBar({ score }) {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-baseline justify-between">
-        <span className="font-mono text-4xl font-bold text-text-primary">{score}</span>
+        <span className="font-mono text-3xl lg:text-4xl font-bold text-text-primary">{score}</span>
         <Badge variant={badgeVariant}>{label}</Badge>
       </div>
       <div className="w-full bg-bg-base rounded-full h-2">
@@ -105,6 +105,7 @@ export default function Dashboard() {
   const [vitalsHistory, setVitalsHistory] = useState([])
   const [loading, setLoading] = useState(true)
   const [mapOpen, setMapOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchParams] = useSearchParams()
   const isDemo = searchParams.get('demo') === 'true'
   const navigate = useNavigate()
@@ -149,28 +150,61 @@ export default function Dashboard() {
   const criticalCount = patients.filter(p => p.alert?.type === 'critical').length
   const atRiskCount = patients.filter(p => p.alert?.type === 'yellow').length
 
+  const handleSelectPatient = (id) => {
+    setSelectedPatient(id)
+    setSidebarOpen(false) // close sidebar on mobile after selection
+  }
+
   return (
     <div className="flex flex-col h-screen bg-bg-base overflow-hidden">
       {/* Top Nav */}
       <nav className="h-12 bg-bg-surface border-b border-bg-border px-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
-          <span className="font-display text-lg font-bold text-text-primary tracking-tight">CardioCommand</span>
+          {/* Hamburger for mobile/tablet */}
+          <button
+            className="lg:hidden p-1 text-text-muted hover:text-text-primary mr-1"
+            onClick={() => setSidebarOpen(o => !o)}
+            aria-label="Toggle patient list"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <span className="font-display text-base lg:text-lg font-bold text-text-primary tracking-tight">CardioCommand</span>
           <span className="text-red-400 text-base">❤️</span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 lg:gap-4">
           <div className="flex items-center gap-1.5">
             <span className="live-dot w-2 h-2 rounded-full bg-red-500 inline-block" />
             <span className="text-xs font-mono text-red-400">LIVE</span>
           </div>
-          <Badge variant="muted">{patients.length} Patients</Badge>
+          <Badge variant="muted" className="hidden sm:inline-flex">{patients.length} Patients</Badge>
           {criticalCount > 0 && <Badge variant="critical">{criticalCount} Critical</Badge>}
-          <span className="text-xs text-text-muted font-mono">Dr. Rao</span>
+          <span className="text-xs text-text-muted font-mono hidden md:inline">Dr. Rao</span>
         </div>
       </nav>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <aside className="w-64 bg-bg-surface border-r border-bg-border flex flex-col overflow-hidden shrink-0">
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Mobile sidebar overlay */}
+        <AnimatePresence>
+          {sidebarOpen && (
+            <motion.div
+              className="fixed inset-0 bg-black/50 z-20 lg:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSidebarOpen(false)}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Sidebar — hidden on mobile unless open, always visible lg+ */}
+        <aside className={clsx(
+          'w-64 bg-bg-surface border-r border-bg-border flex flex-col overflow-hidden shrink-0',
+          'absolute lg:static z-30 lg:z-auto h-full',
+          'transition-transform duration-200',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        )}>
           <div className="p-3 border-b border-bg-border">
             <p className="text-xs font-mono text-text-muted uppercase tracking-widest mb-2">My Patients</p>
             <input
@@ -197,7 +231,7 @@ export default function Dashboard() {
                   key={p.id}
                   patient={p}
                   selected={p.id === selectedPatientId}
-                  onClick={() => setSelectedPatient(p.id)}
+                  onClick={() => handleSelectPatient(p.id)}
                 />
               ))
             )}
@@ -205,9 +239,9 @@ export default function Dashboard() {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-4 space-y-4">
+        <main className="flex-1 overflow-y-auto p-3 lg:p-4 space-y-4">
 
-          {/* Live Location Map — always visible regardless of patient selection */}
+          {/* Live Location Map */}
           <div className="bg-bg-surface border border-bg-border rounded-xl overflow-hidden">
             <button
               onClick={() => setMapOpen(o => !o)}
@@ -225,7 +259,7 @@ export default function Dashboard() {
             </button>
 
             {mapOpen && (
-              <div style={{ height: 400 }}>
+              <div className="h-48 md:h-64 lg:h-[320px]">
                 <PatientMap
                   selectedPatientId={selectedPatientId}
                   onSelectPatient={setSelectedPatient}
@@ -250,25 +284,25 @@ export default function Dashboard() {
                         : 'bg-amber-500/10 border-amber-500/30'
                     )}
                   >
-                    <span className="text-lg">{currentVitals.alert.type === 'critical' ? '🚨' : '⚠️'}</span>
+                    <span className="text-lg shrink-0">{currentVitals.alert.type === 'critical' ? '🚨' : '⚠️'}</span>
                     <p className="text-sm text-text-primary">{currentVitals.alert.message}</p>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              {/* Patient Header + Risk Score */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-2 bg-bg-surface border border-bg-border rounded-xl p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <h1 className="font-display text-2xl font-bold text-text-primary">{selectedPatient.name}</h1>
-                      <p className="text-text-secondary text-sm">
+              {/* Patient Header + Risk Score — stacks on tablet */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 lg:gap-4">
+                <div className="md:col-span-2 bg-bg-surface border border-bg-border rounded-xl p-4">
+                  <div className="flex items-start justify-between mb-2 gap-2">
+                    <div className="min-w-0">
+                      <h1 className="font-display text-xl lg:text-2xl font-bold text-text-primary truncate">{selectedPatient.name}</h1>
+                      <p className="text-text-secondary text-xs lg:text-sm">
                         {selectedPatient.surgery_type} · Day {selectedPatient.days_post_op} Post-Op · EF: {selectedPatient.ejection_fraction}%
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right shrink-0">
                       <p className="text-xs font-mono text-text-muted">Attending</p>
-                      <p className="text-sm text-text-secondary">{selectedPatient.attending}</p>
+                      <p className="text-xs lg:text-sm text-text-secondary">{selectedPatient.attending}</p>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-1.5 mt-3">
@@ -287,10 +321,10 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Live Vitals Strip */}
+              {/* Live Vitals Strip — 2 cols mobile, 3 tablet, 6 desktop */}
               <div>
                 <p className="text-xs font-mono text-text-muted uppercase tracking-widest mb-2">Live Vitals</p>
-                <div className="grid grid-cols-6 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                   {VITAL_METRICS.map(metric => (
                     <VitalCard
                       key={metric}
@@ -301,17 +335,17 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Trend Charts — compact horizontal row */}
-              <div className="grid grid-cols-3 gap-3">
+              {/* Trend Charts — 1 col mobile, 3 desktop */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <VitalsChart data={vitalsHistory} metrics={['heart_rate']} title="Heart Rate" height={80} />
                 <VitalsChart data={vitalsHistory} metrics={['spo2']} title="SpO₂" height={80} />
                 <VitalsChart data={vitalsHistory} metrics={['hrv']} title="HRV" height={80} />
               </div>
 
-              {/* AI Panel + Timeline */}
-              <div className="grid grid-cols-5 gap-4">
+              {/* AI Panel + Timeline — stack on tablet, side-by-side on desktop */}
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
                 {/* AI Panel */}
-                <div className="col-span-4 bg-bg-surface border border-bg-border rounded-xl p-4 flex flex-col">
+                <div className="lg:col-span-4 bg-bg-surface border border-bg-border rounded-xl p-4 flex flex-col">
                   <p className="text-xs font-mono text-text-muted uppercase tracking-wider mb-3">AI Actions</p>
                   <div className="flex-1">
                     <AgentPanel patient={selectedPatient} currentVitals={currentVitals} />
@@ -319,7 +353,7 @@ export default function Dashboard() {
                 </div>
 
                 {/* Timeline */}
-                <div className="col-span-1 bg-bg-surface border border-bg-border rounded-xl overflow-hidden flex flex-col">
+                <div className="lg:col-span-1 bg-bg-surface border border-bg-border rounded-xl overflow-hidden flex flex-col max-h-80 lg:max-h-none">
                   <div className="px-3 py-2 border-b border-bg-border">
                     <p className="text-xs font-mono text-text-muted uppercase tracking-wider">Timeline</p>
                   </div>
@@ -330,10 +364,10 @@ export default function Dashboard() {
                           <span className="text-base">{event.icon}</span>
                           <div className="w-px flex-1 bg-bg-border mt-1" />
                         </div>
-                        <div className="pb-3">
+                        <div className="pb-3 min-w-0">
                           <p className="text-xs font-mono text-text-muted">{event.day} — {event.time}</p>
                           <p className="text-xs font-medium text-text-secondary">{event.label}</p>
-                          <p className="text-xs text-text-muted leading-relaxed">{event.detail}</p>
+                          <p className="text-xs text-text-muted leading-relaxed break-words">{event.detail}</p>
                         </div>
                       </div>
                     ))}
@@ -345,8 +379,8 @@ export default function Dashboard() {
               </div>
             </>
           ) : (
-            <div className="flex items-center justify-center h-full text-text-muted font-mono">
-              Select a patient from the sidebar
+            <div className="flex items-center justify-center h-64 text-text-muted font-mono text-sm">
+              {loading ? 'Loading...' : 'Select a patient from the sidebar'}
             </div>
           )}
         </main>

@@ -30,6 +30,9 @@ export default {
       maxWidth: {
         mobile: '480px',
       },
+      screens: {
+        xs: '375px',
+      },
     },
   },
   plugins: [],
