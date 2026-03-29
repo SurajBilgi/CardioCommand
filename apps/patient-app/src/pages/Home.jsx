@@ -5,6 +5,7 @@ import { clsx } from 'clsx'
 import { useVitalsWS } from '../hooks/useVitalsWS'
 import { fetchPatient } from '../services/api'
 import { DemoPanel } from '../components/demo/DemoPanel'
+import { StreakRewards } from '../components/streak/StreakRewards'
 import { PatientCallModal } from '../components/voice/PatientCallModal'
 
 const PATIENT_ID = 'john-mercer'
@@ -16,9 +17,40 @@ const SESSIONS_THIS_WEEK = 2
 const SESSIONS_GOAL = 3
 const BEST_STREAK = 9
 
-function buildStreakCalendar(year, currentStreak) {
+function buildProgramLevels(programLength, currentStreak, bestStreak) {
+  const levels = Array(programLength).fill(0)
+  const currentStart = Math.max(0, programLength - currentStreak)
+  const breakIndex = currentStart - 1
+  const previousRunLength = Math.min(bestStreak, Math.max(breakIndex, 0))
+  const previousRunStart = Math.max(0, breakIndex - previousRunLength)
+
+  for (let index = 0; index < previousRunStart; index += 1) {
+    levels[index] = [1, 3, 5].includes(index % 7) ? 2 : 0
+  }
+
+  for (let index = previousRunStart; index < breakIndex; index += 1) {
+    levels[index] = index % 2 === 0 ? 3 : 2
+  }
+
+  if (breakIndex >= 0) {
+    levels[breakIndex] = 0
+  }
+
+  for (let index = currentStart; index < programLength; index += 1) {
+    levels[index] = 4
+  }
+
+  return levels
+}
+
+function buildStreakCalendar(year, currentStreak, rehabWeek, bestStreak) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
+  const programLength = Math.max(rehabWeek * 7, currentStreak + bestStreak + 1)
+  const rehabStart = new Date(today)
+  rehabStart.setDate(rehabStart.getDate() - (programLength - 1))
+  rehabStart.setHours(0, 0, 0, 0)
+  const programLevels = buildProgramLevels(programLength, currentStreak, bestStreak)
 
   const firstDay = new Date(year, 0, 1)
   const start = new Date(firstDay)
@@ -45,14 +77,10 @@ function buildStreakCalendar(year, currentStreak) {
 
     let level = -1
     if (isInYear) {
-      const daysAgo = Math.round((today.getTime() - date.getTime()) / 86400000)
-      const seed = (date.getMonth() * 31 + date.getDate() * 17 + date.getDay() * 13) % 10
-
-      if (daysAgo < currentStreak) level = 4
-      else if (seed >= 8) level = 3
-      else if (seed >= 6) level = 2
-      else if (seed >= 4) level = 1
-      else level = 0
+      if (date >= rehabStart && date <= today) {
+        const programIndex = Math.round((date.getTime() - rehabStart.getTime()) / 86400000)
+        level = programLevels[programIndex] ?? 0
+      }
     }
 
     days.push({
@@ -75,9 +103,15 @@ function buildStreakCalendar(year, currentStreak) {
   })
 
   const completedDays = days.filter(day => day.level >= 2).length
-  const activeWeeks = weeks.filter(week => week.some(day => day?.level >= 2)).length
+  const activeWeeks = weeks.filter(week => week.filter(day => day?.level >= 2).length >= 4).length
 
-  return { weeks, monthLabels, completedDays, activeWeeks }
+  return {
+    weeks,
+    monthLabels,
+    completedDays,
+    activeWeeks,
+    programStartLabel: rehabStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+  }
 }
 
 function StreakCalendarModal({ streak, onClose, calendar }) {
@@ -92,7 +126,7 @@ function StreakCalendarModal({ streak, onClose, calendar }) {
       exit={{ opacity: 0 }}
     >
       <motion.div
-        className="w-full max-w-md rounded-[30px] border border-bg-border bg-bg-surface shadow-[0_24px_48px_rgba(44,36,32,0.22)] overflow-hidden"
+        className="w-full max-w-md max-h-[calc(100vh-3rem)] overflow-y-auto rounded-[30px] border border-bg-border bg-bg-surface shadow-[0_24px_48px_rgba(44,36,32,0.22)]"
         initial={{ y: 30, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 20, opacity: 0 }}
@@ -116,7 +150,7 @@ function StreakCalendarModal({ streak, onClose, calendar }) {
           </div>
         </div>
 
-        <div className="p-5 space-y-4">
+        <div className="p-5 space-y-3">
           <div className="grid grid-cols-3 gap-2">
             {[
               { label: 'Current', value: `${streak}d` },
@@ -130,12 +164,14 @@ function StreakCalendarModal({ streak, onClose, calendar }) {
             ))}
           </div>
 
+          <StreakRewards streak={streak} />
+
           <div className="rounded-[24px] border border-bg-border bg-bg-elevated p-4">
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>
                 <p className="font-ui text-sm font-semibold text-txt-primary">Year view</p>
                 <p className="font-ui text-xs text-txt-secondary mt-1">
-                  {calendar.completedDays} steady rehab days logged this year.
+                  {calendar.completedDays} steady rehab days since {calendar.programStartLabel}.
                 </p>
               </div>
               <div className="shrink-0 rounded-full border border-bg-border bg-bg-surface px-3 py-1">
@@ -187,7 +223,7 @@ function StreakCalendarModal({ streak, onClose, calendar }) {
 
               <div className="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-bg-border">
                 <p className="font-ui text-xs text-txt-secondary">
-                  Darker squares mean stronger consistency.
+                  Blank days are before rehab started.
                 </p>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="font-ui text-[11px] text-txt-muted">Less</span>
@@ -199,11 +235,9 @@ function StreakCalendarModal({ streak, onClose, calendar }) {
               </div>
             </div>
 
-            <div className="mt-3 rounded-[18px] border border-bg-border bg-bg-surface px-4 py-3">
-              <p className="font-ui text-sm leading-6 text-txt-primary">
-                This view helps you see your rhythm over time, not just one good or bad day.
-              </p>
-            </div>
+            <p className="font-ui text-xs leading-5 text-txt-secondary mt-3 px-1">
+              Darker squares mean stronger consistency once your rehab plan began.
+            </p>
           </div>
         </div>
       </motion.div>
@@ -507,7 +541,7 @@ export default function Home() {
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
   const streakCalendar = useMemo(
-    () => buildStreakCalendar(new Date().getFullYear(), REHAB_STREAK),
+    () => buildStreakCalendar(new Date().getFullYear(), REHAB_STREAK, REHAB_WEEK, BEST_STREAK),
     []
   )
 
