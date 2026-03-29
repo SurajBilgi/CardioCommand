@@ -12,8 +12,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { clsx } from 'clsx'
 import Vapi from '@vapi-ai/web'
+import { BASE_URL } from '../../lib/apiConfig'
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 const VAPI_PUBLIC_KEY = import.meta.env.VITE_VAPI_PUBLIC_KEY || ''
 
 // ── Pulse ring animation around avatar ───────────────────────────────────────

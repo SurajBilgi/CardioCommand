@@ -1,19 +1,7 @@
 import axios from 'axios'
-import {
-  DEMO_PATIENT,
-  DEMO_VITALS,
-  buildDemoVitalsHistory,
-} from '../data/patientDemoData'
+import { BASE_URL, WS_BASE } from '../lib/apiConfig'
 
-const LOCAL_API_BASE_URL = 'http://localhost:8000'
-const LOCAL_WS_BASE_URL = 'ws://localhost:8000'
-const PROD_API_BASE_URL = 'https://cardiocommand-production.up.railway.app'
-const PROD_WS_BASE_URL = 'wss://cardiocommand-production.up.railway.app'
-const IS_BROWSER = typeof window !== 'undefined'
-const IS_LOCAL_HOST = IS_BROWSER && ['localhost', '127.0.0.1'].includes(window.location.hostname)
-
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || (IS_LOCAL_HOST ? LOCAL_API_BASE_URL : PROD_API_BASE_URL)
-export const WS_BASE = import.meta.env.VITE_WS_BASE_URL || (IS_LOCAL_HOST ? LOCAL_WS_BASE_URL : PROD_WS_BASE_URL)
+export { BASE_URL, WS_BASE }
 
 export const api = axios.create({ baseURL: BASE_URL, timeout: 5000 })
 

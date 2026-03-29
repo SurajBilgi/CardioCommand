@@ -15,8 +15,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { clsx } from 'clsx'
 import Vapi from '@vapi-ai/web'
 import { VoiceAgent, CALL_STATES, getStateLabel } from '../../services/voiceAgent'
+import { BASE_URL } from '../../lib/apiConfig'
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 const VAPI_PUBLIC_KEY = import.meta.env.VITE_VAPI_PUBLIC_KEY || ''
 
 // ── Severity / adherence helpers ──────────────────────────────────────────────

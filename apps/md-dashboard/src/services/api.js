@@ -1,7 +1,7 @@
 import axios from 'axios'
+import { BASE_URL, WS_BASE } from '../lib/apiConfig'
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
-export const WS_BASE = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8000'
+export { BASE_URL, WS_BASE }
 
 export const api = axios.create({ baseURL: BASE_URL, timeout: 5000 })
 
