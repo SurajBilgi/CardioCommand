@@ -2,7 +2,7 @@ import base64
 import json
 import os
 from datetime import datetime, timedelta, timezone
-from urllib.parse import urlencode
+from urllib.parse import urlencode, quote_plus
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -36,8 +36,27 @@ def _patient_app_url(patient_id: str) -> str:
     return f"{base}/?whoop=connected&patient_id={patient_id}"
 
 
+def _patient_app_base_url() -> str:
+    return os.getenv("PATIENT_APP_URL", "http://127.0.0.1:5174")
+
+
+def _patient_redirect_with_error(patient_id: str | None, error_code: str, detail: str) -> RedirectResponse:
+    base = _patient_app_url(patient_id) if patient_id else _patient_app_base_url()
+    separator = "&" if "?" in base else "?"
+    url = (
+        f"{base}{separator}wearable_error={quote_plus(error_code)}"
+        f"&wearable_detail={quote_plus(detail)}"
+    )
+    return RedirectResponse(url=url, status_code=302)
+
+
 def _whoop_configured() -> bool:
     return bool(os.getenv("WHOOP_CLIENT_ID") and os.getenv("WHOOP_CLIENT_SECRET"))
+
+
+def _public_base_configured() -> bool:
+    base = os.getenv("PUBLIC_BASE_URL", "")
+    return bool(base and "YOUR-ACTUAL-RAILWAY-URL" not in base and "your-railway-url" not in base)
 
 
 def _require_whoop_env() -> tuple[str, str]:
@@ -180,9 +199,16 @@ async def _sync_connection(connection: WhoopConnection):
 @router.get("/connect")
 async def connect_whoop(patient_id: str = Query(..., min_length=1)):
     if not _whoop_configured():
-        return RedirectResponse(
-            url=f"{_patient_app_url(patient_id)}&wearable_error=whoop_not_ready",
-            status_code=302,
+        return _patient_redirect_with_error(
+            patient_id,
+            "whoop_not_ready",
+            "WHOOP credentials are missing on the backend deployment.",
+        )
+    if not _public_base_configured():
+        return _patient_redirect_with_error(
+            patient_id,
+            "callback_not_ready",
+            "PUBLIC_BASE_URL is still using a placeholder. Add the real Railway URL and redeploy.",
         )
     client_id, _ = _require_whoop_env()
     query = urlencode(
@@ -198,24 +224,78 @@ async def connect_whoop(patient_id: str = Query(..., min_length=1)):
 
 
 @router.get("/callback")
-async def whoop_callback(code: str, state: str, db: Session = Depends(get_db)):
-    patient_id = _decode_state(state)
-    client_id, client_secret = _require_whoop_env()
+async def whoop_callback(
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    error_description: str | None = None,
+    db: Session = Depends(get_db),
+):
+    patient_id = None
+    if state:
+        try:
+            patient_id = _decode_state(state)
+        except HTTPException:
+            patient_id = None
 
-    async with httpx.AsyncClient(timeout=20.0) as client:
-        response = await client.post(
-            WHOOP_TOKEN_URL,
-            data={
-                "grant_type": "authorization_code",
-                "code": code,
-                "client_id": client_id,
-                "client_secret": client_secret,
-                "redirect_uri": _redirect_uri(),
-            },
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
+    if error:
+        return _patient_redirect_with_error(
+            patient_id,
+            error,
+            error_description or "WHOOP did not complete the authorization flow.",
         )
-        response.raise_for_status()
-        token_data = response.json()
+
+    if not code or not state:
+        return _patient_redirect_with_error(
+            patient_id,
+            "missing_callback_data",
+            "WHOOP returned without the code or state we need to finish connection.",
+        )
+
+    if patient_id is None:
+        return _patient_redirect_with_error(
+            None,
+            "invalid_state",
+            "WHOOP returned an invalid state token. Start the connection again from the app.",
+        )
+
+    try:
+        client_id, client_secret = _require_whoop_env()
+    except HTTPException:
+        return _patient_redirect_with_error(
+            patient_id,
+            "whoop_not_ready",
+            "WHOOP credentials are missing on the backend deployment.",
+        )
+
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            response = await client.post(
+                WHOOP_TOKEN_URL,
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "redirect_uri": _redirect_uri(),
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+            response.raise_for_status()
+            token_data = response.json()
+    except httpx.HTTPStatusError as exc:
+        detail = exc.response.text[:180] if exc.response is not None else str(exc)
+        return _patient_redirect_with_error(
+            patient_id,
+            "token_exchange_failed",
+            f"WHOOP token exchange failed. Check redirect URL and backend env. {detail}",
+        )
+    except httpx.HTTPError as exc:
+        return _patient_redirect_with_error(
+            patient_id,
+            "whoop_network_error",
+            f"WHOOP could not be reached from the backend. {exc}",
+        )
 
     connection = (
         db.query(WhoopConnection)
@@ -235,7 +315,23 @@ async def whoop_callback(code: str, state: str, db: Session = Depends(get_db)):
     )
     connection.is_connected = True
 
-    await _sync_connection(connection)
+    try:
+        await _sync_connection(connection)
+    except httpx.HTTPStatusError as exc:
+        db.rollback()
+        detail = exc.response.text[:180] if exc.response is not None else str(exc)
+        return _patient_redirect_with_error(
+            patient_id,
+            "sync_failed",
+            f"WHOOP connected, but pulling profile data failed. {detail}",
+        )
+    except httpx.HTTPError as exc:
+        db.rollback()
+        return _patient_redirect_with_error(
+            patient_id,
+            "whoop_network_error",
+            f"WHOOP connected, but sync failed due to a network issue. {exc}",
+        )
     db.commit()
 
     return RedirectResponse(url=_patient_app_url(patient_id), status_code=302)

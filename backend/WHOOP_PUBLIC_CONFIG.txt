@@ -1,0 +1,6 @@
+WHOOP_CLIENT_ID=5f4790d3-d330-4ba2-91b5-03202926af83
+WHOOP_CLIENT_SECRET=3f790c493ee56dc3db2fdee3017df4c6ed6e30e1498bdf9148f80f04471e6da7
+PUBLIC_BASE_URL=https://YOUR-ACTUAL-RAILWAY-URL.up.railway.app
+PATIENT_APP_URL=https://cardio-command-wqcp.vercel.app
+
+WHOOP_REDIRECT_URI=https://YOUR-ACTUAL-RAILWAY-URL.up.railway.app/integrations/whoop/callback
