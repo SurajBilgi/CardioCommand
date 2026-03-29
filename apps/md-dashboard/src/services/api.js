@@ -216,6 +216,19 @@ export const getPreVisitBrief = (patientId, patientProfile) =>
     body: JSON.stringify({ patient_id: patientId, patient_profile: patientProfile }),
   })
 
+export const fetchRecoveryPlan = (patientId) =>
+  withFallback(
+    () => api.get(`/recovery-plans/patient/${patientId}`).then(r => r.data),
+    null
+  )
+
+export const saveRecoveryPlan = (patientId, patientProfile, currentVitals, doctorPlan) =>
+  api.post('/recovery-plans', {
+    patient_id: patientId,
+    patient_profile: patientProfile,
+    current_vitals: currentVitals,
+    doctor_plan: doctorPlan,
+  }).then(r => r.data)
 export const doctorChat = (patientProfile, currentVitals, message, analysisContext, conversationHistory) =>
   fetch(`${BASE_URL}/ai/doctor-chat`, {
     method: 'POST',
