@@ -45,6 +45,8 @@ export default function Home() {
   const [patient, setPatient] = useState(null)
   const [mood, setMood] = useState(null)
   const [showVoiceCall, setShowVoiceCall] = useState(false)
+  const [showWearableOptions, setShowWearableOptions] = useState(false)
+  const [wearableMessage, setWearableMessage] = useState('')
   const [whoopStatus, setWhoopStatus] = useState(null)
   const [whoopSyncing, setWhoopSyncing] = useState(false)
   const [searchParams] = useSearchParams()
@@ -56,6 +58,18 @@ export default function Home() {
     fetchPatient(PATIENT_ID).then(setPatient).catch(() => {})
     fetchWhoopStatus(PATIENT_ID).then(setWhoopStatus).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    const wearableError = searchParams.get('wearable_error')
+    const whoopConnectedParam = searchParams.get('whoop')
+
+    if (wearableError === 'whoop_not_ready') {
+      setWearableMessage('WHOOP connection is not ready on this deployment yet. You can still use the app and connect later.')
+    } else if (whoopConnectedParam === 'connected') {
+      setWearableMessage('Your wearable was connected successfully.')
+      fetchWhoopStatus(PATIENT_ID).then(setWhoopStatus).catch(() => {})
+    }
+  }, [searchParams])
 
   const hr = vitals?.heart_rate ? Math.round(vitals.heart_rate) : '—'
   const spo2 = vitals?.spo2 ? Math.round(vitals.spo2) : '—'
@@ -93,6 +107,7 @@ export default function Home() {
   const whoopSleep = whoopLatest.sleep_hours ?? '—'
   const whoopRecovery = whoopLatest.recovery_score ?? '—'
   const whoopRhr = whoopLatest.resting_heart_rate ?? '—'
+  const whoopConfigured = Boolean(whoopStatus?.configured)
   const whoopLastSync = whoopStatus?.last_sync_at
     ? new Date(whoopStatus.last_sync_at).toLocaleString('en-US', {
         month: 'short',
@@ -115,7 +130,13 @@ export default function Home() {
   }
 
   function handleWhoopConnect() {
+    setShowWearableOptions(false)
     window.location.assign(getWhoopConnectUrl(PATIENT_ID))
+  }
+
+  function handleAppleHealthConnect() {
+    setShowWearableOptions(false)
+    setWearableMessage('Apple Health connection needs a small iPhone companion app. For this demo, WHOOP is the live wearable path.')
   }
 
   return (
@@ -127,8 +148,73 @@ export default function Home() {
           onClose={() => setShowVoiceCall(false)}
         />
       )}
+      {showWearableOptions && (
+        <motion.div
+          className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => setShowWearableOptions(false)}
+        >
+          <motion.div
+            className="w-full max-w-mobile bg-bg-surface rounded-3xl border border-bg-border shadow-xl p-4"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <p className="font-display text-xl text-txt-primary">Choose a wearable</p>
+                <p className="font-ui text-sm text-txt-secondary mt-1">Keep this simple. Pick the device you already use.</p>
+              </div>
+              <button
+                onClick={() => setShowWearableOptions(false)}
+                className="w-8 h-8 rounded-full bg-bg-elevated text-txt-secondary"
+              >
+                ×
+              </button>
+            </div>
+
+            <button
+              onClick={handleWhoopConnect}
+              className="w-full text-left rounded-2xl border border-bg-border bg-bg-elevated px-4 py-4 mb-3"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-display text-base text-txt-primary">WHOOP</p>
+                  <p className="font-ui text-sm text-txt-secondary mt-1">
+                    {whoopConfigured ? 'Connect and sync your recovery, sleep, and heart data' : 'Ready in this app once the WHOOP credentials are added'}
+                  </p>
+                </div>
+                <span className={clsx(
+                  'font-ui text-xs px-2 py-1 rounded-full',
+                  whoopConfigured ? 'bg-accent-primary/10 text-accent-primary' : 'bg-bg-surface text-txt-muted'
+                )}>
+                  {whoopConfigured ? 'Connect' : 'Not ready'}
+                </span>
+              </div>
+            </button>
+
+            <button
+              onClick={handleAppleHealthConnect}
+              className="w-full text-left rounded-2xl border border-bg-border bg-bg-elevated px-4 py-4"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-display text-base text-txt-primary">Apple Health</p>
+                  <p className="font-ui text-sm text-txt-secondary mt-1">
+                    Best on iPhone with a small companion app bridge.
+                  </p>
+                </div>
+                <span className="font-ui text-xs px-2 py-1 rounded-full bg-bg-surface text-txt-muted">Soon</span>
+              </div>
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
     </AnimatePresence>
-    <div className="app-container pb-8">
+    <div className="app-container pb-28">
       {/* Header */}
       <div className="bg-bg-surface px-5 pt-safe pt-8 pb-5 border-b border-bg-border">
         <div className="flex items-start justify-between">
@@ -185,6 +271,16 @@ export default function Home() {
       </div>
 
       <div className="px-4 pt-4 space-y-4">
+        {wearableMessage && (
+          <motion.div
+            className="bg-bg-surface rounded-2xl p-4 border border-bg-border shadow-sm"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <p className="font-ui text-sm text-txt-secondary">{wearableMessage}</p>
+          </motion.div>
+        )}
+
         {/* Mood Card */}
         <motion.div
           className="bg-bg-surface rounded-2xl p-4 border border-bg-border shadow-sm"
@@ -436,7 +532,7 @@ export default function Home() {
             </>
           ) : (
             <button
-              onClick={handleWhoopConnect}
+              onClick={() => setShowWearableOptions(true)}
               className="mt-3 w-full font-ui text-sm font-medium text-white bg-accent-primary py-3 rounded-xl hover:bg-[#d4614a] transition-colors"
             >
               Connect Wearable

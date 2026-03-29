@@ -36,6 +36,10 @@ def _patient_app_url(patient_id: str) -> str:
     return f"{base}/?whoop=connected&patient_id={patient_id}"
 
 
+def _whoop_configured() -> bool:
+    return bool(os.getenv("WHOOP_CLIENT_ID") and os.getenv("WHOOP_CLIENT_SECRET"))
+
+
 def _require_whoop_env() -> tuple[str, str]:
     client_id = os.getenv("WHOOP_CLIENT_ID")
     client_secret = os.getenv("WHOOP_CLIENT_SECRET")
@@ -175,6 +179,11 @@ async def _sync_connection(connection: WhoopConnection):
 
 @router.get("/connect")
 async def connect_whoop(patient_id: str = Query(..., min_length=1)):
+    if not _whoop_configured():
+        return RedirectResponse(
+            url=f"{_patient_app_url(patient_id)}&wearable_error=whoop_not_ready",
+            status_code=302,
+        )
     client_id, _ = _require_whoop_env()
     query = urlencode(
         {
@@ -242,12 +251,15 @@ def latest_whoop(patient_id: str, db: Session = Depends(get_db)):
     if not connection:
         return {
             "patient_id": patient_id,
+            "configured": _whoop_configured(),
             "connected": False,
             "provider": "whoop",
             "latest": {},
             "setup_required": True,
         }
-    return connection.to_summary()
+    summary = connection.to_summary()
+    summary["configured"] = _whoop_configured()
+    return summary
 
 
 @router.post("/sync/{patient_id}")
