@@ -212,7 +212,7 @@ function ModeBtn({ id, active, icon, label, sub, onClick }) {
 
 // ── Main Modal ─────────────────────────────────────────────────────────────────
 
-export function VoiceCallModal({ patient, currentVitals, onClose }) {
+export function VoiceCallModal({ patient, currentVitals, outreachScript, onClose }) {
   const [mode, setMode] = useState(VAPI_PUBLIC_KEY ? 'vapi-browser' : 'basic')
   const [callActive, setCallActive] = useState(false)
   const [callStatus, setCallStatus] = useState('idle')
@@ -383,7 +383,7 @@ export function VoiceCallModal({ patient, currentVitals, onClose }) {
       const r = await fetch(`${BASE_URL}/voice/vapi/assistant-config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ patient }),
+        body: JSON.stringify({ patient, outreach_script: outreachScript || null }),
       })
       const { config } = r.ok ? await r.json() : { config: null }
 
@@ -422,7 +422,7 @@ export function VoiceCallModal({ patient, currentVitals, onClose }) {
       const r = await fetch(`${BASE_URL}/voice/vapi/call`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ patient, patient_phone: twilioPhone }),
+        body: JSON.stringify({ patient, patient_phone: twilioPhone, outreach_script: outreachScript || null }),
       })
       const data = await r.json()
       if (!data.success) { setError(data.error); setCallStatus('error'); return }

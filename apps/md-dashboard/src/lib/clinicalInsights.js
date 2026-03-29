@@ -9,6 +9,7 @@ export function getPatientVitals(patient) {
 export function getAdherenceInsight(patient, vitals = {}) {
   let score = 18
   const reasons = []
+  const rehab = patient?.rehab || {}
 
   if ((vitals.steps_today ?? 0) < 900) {
     score += 24
@@ -40,6 +41,21 @@ export function getAdherenceInsight(patient, vitals = {}) {
     reasons.push('Rhythm concerns may cause fear-driven disengagement')
   }
 
+  if ((rehab.sessions_this_week ?? 0) < Math.max(1, (rehab.sessions_goal ?? 3) - 1)) {
+    score += 18
+    reasons.push('Rehab sessions are falling behind this week')
+  }
+
+  if (rehab.last_barrier_reason) {
+    score += 14
+    reasons.push(`Last skipped reason: ${rehab.last_barrier_reason}`)
+  }
+
+  if ((rehab.last_session_duration_seconds ?? 0) > 0 && (rehab.last_session_duration_seconds ?? 0) < 8 * 60) {
+    score += 8
+    reasons.push('Recent rehab session ended early and may need coaching')
+  }
+
   score = clamp(score, 0, 100)
 
   const level = score >= 75 ? 'high' : score >= 45 ? 'moderate' : 'low'
@@ -55,6 +71,7 @@ export function getAdherenceInsight(patient, vitals = {}) {
 export function getAlertExplanation(patient, vitals = {}) {
   const reasons = []
   const evidence = []
+  const rehab = patient?.rehab || {}
 
   if ((vitals.heart_rate ?? 0) > 100) {
     reasons.push('Heart rate is elevated above the safe recovery range')
@@ -86,6 +103,11 @@ export function getAlertExplanation(patient, vitals = {}) {
     evidence.push(`${Math.round(vitals.steps_today || 0)} steps`)
   }
 
+  if (rehab.last_barrier_reason) {
+    reasons.push('Recent rehab friction is contributing to today’s recovery risk')
+    evidence.push(`Barrier: ${rehab.last_barrier_reason}`)
+  }
+
   if (reasons.length === 0) {
     reasons.push('No major physiologic trigger is active right now')
     evidence.push('Vitals remain in the expected post-op range')
@@ -98,6 +120,8 @@ export function getAlertExplanation(patient, vitals = {}) {
 }
 
 export function getRecommendedNextAction(patient, vitals = {}, adherenceInsight = getAdherenceInsight(patient, vitals)) {
+  const rehab = patient?.rehab || {}
+
   if ((vitals.alert?.type === 'critical') || (vitals.risk_score ?? 0) >= 85 || (vitals.afib_risk ?? 0) >= 70) {
     return {
       urgency: 'now',
@@ -112,7 +136,9 @@ export function getRecommendedNextAction(patient, vitals = {}, adherenceInsight 
     return {
       urgency: 'today',
       label: 'Recovery coaching outreach',
-      detail: 'Use reassurance plus a lighter rehab goal so the patient does not disengage this week.',
+      detail: rehab.last_barrier_reason
+        ? `Use reassurance around "${rehab.last_barrier_reason}" and offer a lighter recovery task today.`
+        : 'Use reassurance plus a lighter rehab goal so the patient does not disengage this week.',
       owner: 'Care coordinator',
       actions: ['Send encouragement message', 'Reduce today’s activity goal', 'Book a same-day follow-up touchpoint'],
     }

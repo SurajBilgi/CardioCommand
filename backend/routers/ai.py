@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from lib.rehab_tracker import record_rehab_event
 from vitals_engine.simulator import simulator
 from risk_model.predictor import compute_risk_score, get_alert_level
 from prompts.library import PROMPTS
@@ -43,6 +44,17 @@ class DischargeRewriteRequest(BaseModel):
     patient_profile: dict
     discharge_text: str
     grade: str = "6th grade"
+
+
+class RehabCheckinRequest(BaseModel):
+    patient_id: str
+    patient_profile: dict
+    mode: str = "win"  # "win" or "wall"
+    session_duration: int = 0  # seconds
+    context: str = ""  # e.g. "patient said they're too tired"
+    rehab_week: int = 2
+    streak: int = 4
+    barrier_label: str = ""
 
 
 def _get_openai_client():
@@ -325,6 +337,88 @@ async def generate_soap_note(request: SOAPRequest):
             "assessment": "Assessment pending.",
             "plan": "Follow-up as planned.",
         }
+
+
+@router.post("/rehab-checkin")
+async def rehab_checkin(request: RehabCheckinRequest):
+    """Post-exercise win celebration or missed-session wall intervention from Cora."""
+    async def generate():
+        full_text = ""
+        try:
+            client = _get_openai_client()
+            vitals = simulator.get_current(request.patient_id)
+            p = request.patient_profile
+
+            if request.mode == "win":
+                duration_min = request.session_duration // 60
+                prompt = PROMPTS["rehab_win"].format(
+                    patient_name=p.get("name", "there"),
+                    rehab_week=request.rehab_week,
+                    surgery_type=p.get("surgery_type", "cardiac surgery"),
+                    session_duration=duration_min if duration_min > 0 else "your",
+                    peak_hr=round(vitals.get("heart_rate", 95)),
+                    spo2=round(vitals.get("spo2", 97)),
+                    streak=request.streak,
+                )
+            else:
+                prompt = PROMPTS["rehab_wall"].format(
+                    patient_name=p.get("name", "there"),
+                    rehab_week=request.rehab_week,
+                    surgery_type=p.get("surgery_type", "cardiac surgery"),
+                    context=request.context or "patient said they want to skip today",
+                )
+
+            stream = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are Cora, a warm cardiac rehabilitation coach. Keep responses short, personal, and emotionally intelligent."},
+                    {"role": "user", "content": prompt},
+                ],
+                max_tokens=150,
+                stream=True,
+            )
+
+            for chunk in stream:
+                delta = chunk.choices[0].delta.content or ""
+                if delta:
+                    full_text += delta
+                    yield f"data: {json.dumps({'type': 'token', 'content': delta})}\n\n"
+
+            state = record_rehab_event(
+                request.patient_id,
+                request.patient_profile,
+                mode=request.mode,
+                coach_message=full_text.strip(),
+                session_duration=request.session_duration,
+                barrier_reason=request.barrier_label or request.context,
+            )
+
+            yield f"data: {json.dumps({'type': 'state', 'rehab': state})}\n\n"
+            yield f"data: {json.dumps({'type': 'complete', 'mode': request.mode})}\n\n"
+
+        except Exception as e:
+            fallback = (
+                f"Amazing work completing your session! That's {request.streak + 1} days in a row — you're building real strength. 💪"
+                if request.mode == "win"
+                else "That's okay — rest is part of recovery too. What would make it easier to try just 10 minutes today?"
+            )
+            state = record_rehab_event(
+                request.patient_id,
+                request.patient_profile,
+                mode=request.mode,
+                coach_message=fallback,
+                session_duration=request.session_duration,
+                barrier_reason=request.barrier_label or request.context,
+            )
+            yield f"data: {json.dumps({'type': 'token', 'content': fallback})}\n\n"
+            yield f"data: {json.dumps({'type': 'state', 'rehab': state})}\n\n"
+            yield f"data: {json.dumps({'type': 'complete', 'mode': request.mode})}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.post("/transcribe")

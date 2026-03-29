@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from fastapi import APIRouter, HTTPException
 
+from lib.rehab_tracker import get_rehab_events, get_rehab_state
 from vitals_engine.simulator import simulator
 from vitals_engine.scenarios import SCENARIOS
 
@@ -33,6 +34,7 @@ def list_patients():
         p_copy["risk_score"] = current.get("risk_score", 0)
         p_copy["alert"] = current.get("alert")
         p_copy["active_scenario"] = simulator.get_scenario(p["id"])
+        p_copy["rehab"] = get_rehab_state(p["id"], p)
         result.append(p_copy)
     return result
 
@@ -45,6 +47,7 @@ def get_patient(patient_id: str):
     p["risk_score"] = current.get("risk_score", 0)
     p["alert"] = current.get("alert")
     p["active_scenario"] = simulator.get_scenario(patient_id)
+    p["rehab"] = get_rehab_state(patient_id, p)
     return p
 
 
@@ -103,6 +106,8 @@ def get_timeline(patient_id: str):
         "time": "07:15am",
         "day": f"Day {scenario.get('day', 1)}",
     })
+
+    timeline.extend(get_rehab_events(patient_id))
 
     timeline.append({
         "id": "a3",

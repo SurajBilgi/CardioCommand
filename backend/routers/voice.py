@@ -51,10 +51,12 @@ class TwilioCallRequest(BaseModel):
 class VapiAssistantConfigRequest(BaseModel):
     patient: dict
     mode: Optional[str] = "outbound"   # "outbound" | "inbound"
+    outreach_script: Optional[str] = None
 
 class VapiPhoneCallRequest(BaseModel):
     patient: dict
     patient_phone: str
+    outreach_script: Optional[str] = None
 
 
 # ── Script config ────────────────────────────────────────────────────────────
@@ -90,7 +92,7 @@ async def vapi_assistant_config(req: VapiAssistantConfigRequest):
     if req.mode == "inbound":
         config = vapi_handler.build_inbound_assistant_config(req.patient)
     else:
-        config = vapi_handler.build_assistant_config(req.patient)
+        config = vapi_handler.build_assistant_config(req.patient, req.outreach_script)
     return {"config": config}
 
 
@@ -100,7 +102,7 @@ async def vapi_assistant_config(req: VapiAssistantConfigRequest):
 async def vapi_phone_call(req: VapiPhoneCallRequest):
     """Create a Vapi assistant then dial the patient's phone number."""
     # Step 1: create assistant
-    assistant_result = await vapi_handler.create_assistant(req.patient)
+    assistant_result = await vapi_handler.create_assistant(req.patient, req.outreach_script)
     if not assistant_result["success"]:
         return {"success": False, "error": assistant_result["error"]}
 
