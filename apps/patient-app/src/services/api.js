@@ -5,8 +5,13 @@ import {
   buildDemoVitalsHistory,
 } from '../data/patientDemoData'
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
-export const WS_BASE = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8000'
+const LOCAL_API_BASE_URL = 'http://localhost:8000'
+const LOCAL_WS_BASE_URL = 'ws://localhost:8000'
+const IS_BROWSER = typeof window !== 'undefined'
+const IS_LOCAL_HOST = IS_BROWSER && ['localhost', '127.0.0.1'].includes(window.location.hostname)
+
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || (IS_LOCAL_HOST ? LOCAL_API_BASE_URL : '')
+export const WS_BASE = import.meta.env.VITE_WS_BASE_URL || (IS_LOCAL_HOST ? LOCAL_WS_BASE_URL : '')
 
 export const api = axios.create({ baseURL: BASE_URL, timeout: 5000 })
 
@@ -101,4 +106,8 @@ export const syncWhoop = (patientId) =>
   })
 
 export const getWhoopConnectUrl = (patientId) =>
-  `${BASE_URL}/integrations/whoop/connect?patient_id=${encodeURIComponent(patientId)}`
+  BASE_URL
+    ? `${BASE_URL}/integrations/whoop/connect?patient_id=${encodeURIComponent(patientId)}`
+    : `${window.location.origin}/?wearable_error=api_not_configured&wearable_detail=${encodeURIComponent(
+        'This deployment is missing VITE_API_BASE_URL. Add your Railway backend URL in the frontend env and redeploy.'
+      )}`
