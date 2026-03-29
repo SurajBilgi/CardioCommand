@@ -1,0 +1,48 @@
+{
+  "conversations": {
+    "john-mercer": [
+      {
+        "id": "1",
+        "role": "cora",
+        "message": "Good morning, John! I'm Cora, your recovery companion. How are you feeling on Day 8 of your recovery from CABG surgery?",
+        "timestamp": "2025-03-25T08:00:00"
+      },
+      {
+        "id": "2",
+        "role": "patient",
+        "message": "I'm feeling pretty tired today. More than usual. And my chest feels a bit tight.",
+        "timestamp": "2025-03-25T08:02:00"
+      },
+      {
+        "id": "3",
+        "role": "cora",
+        "message": "Thank you for telling me that, John — it takes courage to speak up about how you're really feeling. Some fatigue at Day 8 is normal after bypass surgery, but I want to make sure we're not missing anything important.\n\nWhen you say your chest feels tight, can you describe it a bit more? Is it like pressure, soreness near your incision, or does it feel different from that?",
+        "timestamp": "2025-03-25T08:02:30"
+      },
+      {
+        "id": "4",
+        "role": "patient",
+        "message": "It's more like a soreness. Not crushing or anything scary. Around where they did the surgery.",
+        "timestamp": "2025-03-25T08:04:00"
+      },
+      {
+        "id": "5",
+        "role": "cora",
+        "message": "That makes sense — incision soreness at Day 8 is very common and expected as you heal. Your body went through a lot!\n\nI do want to flag that your heart rate has been a little faster than usual today, and your oxygen levels dipped slightly overnight. Nothing alarming on its own, but combined with the fatigue, I've let your care team know so they can keep an eye on things.\n\nFor today: try to rest a bit more, make sure you're drinking enough water, and take your Metoprolol doses on time — it helps keep your heart rate steady. \n\nOne thing I'd suggest: if the chest soreness gets worse, spreads to your arm or jaw, or you feel short of breath at rest, call us immediately. Can you do that?",
+        "timestamp": "2025-03-25T08:04:45"
+      },
+      {
+        "id": "6",
+        "role": "patient",
+        "message": "Yes, I can do that. Thank you Cora. How long will I feel this tired?",
+        "timestamp": "2025-03-25T08:06:00"
+      },
+      {
+        "id": "7",
+        "role": "cora",
+        "message": "Most people start feeling meaningfully better between weeks 2 and 4 after bypass surgery. Week 1 is often the hardest — your heart and body are doing a lot of healing work you can't see.\n\nBy Day 14, most patients notice they can walk a bit more and sleep a bit better. By Day 30, many feel like themselves again (sometimes even better, since the surgery fixed the blood flow problem!)\n\nYou're right in the middle of the hard part. Hang in there — you're doing great. 💙\n\nYour one action for today: take a 10-minute walk around the house this afternoon, if you feel up to it. Movement helps your recovery more than rest at this stage.",
+        "timestamp": "2025-03-25T08:06:45"
+      }
+    ]
+  }
+}

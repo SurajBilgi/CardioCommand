@@ -1,0 +1,89 @@
+"""SQLAlchemy ORM models for CardioCommand."""
+import uuid
+from datetime import datetime, timezone
+from sqlalchemy import Column, String, Integer, DateTime, JSON, Text
+from database import Base
+
+
+def _now():
+    return datetime.now(timezone.utc)
+
+
+def _uuid():
+    return str(uuid.uuid4())
+
+
+class CallRecord(Base):
+    """
+    Stores every voice call — both inbound (patient -> Cora) and
+    outbound (Cora -> patient initiated from doctor dashboard).
+    """
+    __tablename__ = "call_records"
+
+    id = Column(String, primary_key=True, default=_uuid)
+    patient_id = Column(String, nullable=False, index=True)
+    patient_name = Column(String, nullable=True)
+    surgery_type = Column(String, nullable=True)
+    days_post_op = Column(Integer, nullable=True)
+
+    # 'inbound'  = patient called Cora (from Patient App)
+    # 'outbound' = Cora called patient (from Doctor Dashboard)
+    call_type = Column(String, nullable=False)
+    # 'patient' | 'doctor'
+    initiated_by = Column(String, nullable=False)
+
+    started_at = Column(DateTime, default=_now)
+    ended_at = Column(DateTime, nullable=True)
+    duration_seconds = Column(Integer, nullable=True)
+
+    vapi_call_id = Column(String, nullable=True, index=True)
+
+    # 'in_progress' | 'completed' | 'failed' | 'no_answer'
+    status = Column(String, default="in_progress")
+
+    # Full transcript: [{speaker, text, timestamp}]
+    transcript = Column(JSON, default=list)
+
+    # Full GPT-4o analysis object
+    analysis = Column(JSON, nullable=True)
+
+    # Quick-access fields extracted from analysis
+    severity = Column(String, nullable=True)        # low/medium/high/critical
+    wellbeing_score = Column(Integer, nullable=True)  # 1-10
+    flags = Column(JSON, default=list)              # list of concern strings
+    medication_adherence = Column(String, nullable=True)
+
+    doctor_notes = Column(Text, nullable=True)
+
+    created_at = Column(DateTime, default=_now)
+    updated_at = Column(DateTime, default=_now, onupdate=_now)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "patient_id": self.patient_id,
+            "patient_name": self.patient_name,
+            "surgery_type": self.surgery_type,
+            "days_post_op": self.days_post_op,
+            "call_type": self.call_type,
+            "initiated_by": self.initiated_by,
+            "started_at": (
+                self.started_at.isoformat() if self.started_at else None
+            ),
+            "ended_at": (
+                self.ended_at.isoformat() if self.ended_at else None
+            ),
+            "duration_seconds": self.duration_seconds,
+            "vapi_call_id": self.vapi_call_id,
+            "status": self.status,
+            "transcript": self.transcript or [],
+            "analysis": self.analysis,
+            "severity": self.severity,
+            "wellbeing_score": self.wellbeing_score,
+            "flags": self.flags or [],
+            "medication_adherence": self.medication_adherence,
+            "doctor_notes": self.doctor_notes,
+            "created_at": (
+                self.created_at.isoformat() if self.created_at else None
+            ),
+        }

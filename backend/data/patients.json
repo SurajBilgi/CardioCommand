@@ -1,0 +1,93 @@
+{
+  "patients": [
+    {
+      "id": "john-mercer",
+      "name": "John Mercer",
+      "age": 67,
+      "photo_initials": "JM",
+      "surgery_type": "Coronary Artery Bypass Graft (CABG)",
+      "surgery_date": "2025-03-17",
+      "days_post_op": 8,
+      "ejection_fraction": 35,
+      "attending": "Dr. Kavitha Rao",
+      "next_appointment": "2025-03-26T14:00:00",
+      "medications": [
+        {"name": "Metoprolol",   "dose": "25mg",  "frequency": "twice daily",  "time": ["08:00", "20:00"]},
+        {"name": "Lisinopril",   "dose": "10mg",  "frequency": "once daily",   "time": ["08:00"]},
+        {"name": "Aspirin",      "dose": "81mg",  "frequency": "once daily",   "time": ["08:00"]},
+        {"name": "Atorvastatin", "dose": "40mg",  "frequency": "nightly",      "time": ["21:00"]},
+        {"name": "Furosemide",   "dose": "20mg",  "frequency": "once daily",   "time": ["08:00"]}
+      ],
+      "comorbidities": ["Type 2 Diabetes", "Hypertension", "CKD Stage 2"],
+      "active_scenario": "early_warning",
+      "phone": "+1-555-0142",
+      "emergency_contact": "Mary Mercer (wife) — +1-555-0143",
+      "home_location": { "lat": 37.7749, "lng": -122.4194, "address": "1842 Oak Street, San Francisco, CA" }
+    },
+    {
+      "id": "rosa-delgado",
+      "name": "Rosa Delgado",
+      "age": 54,
+      "photo_initials": "RD",
+      "surgery_type": "Transcatheter Aortic Valve Replacement (TAVR)",
+      "surgery_date": "2025-03-20",
+      "days_post_op": 5,
+      "ejection_fraction": 52,
+      "attending": "Dr. Kavitha Rao",
+      "next_appointment": "2025-03-29T10:30:00",
+      "medications": [
+        {"name": "Warfarin",     "dose": "5mg",   "frequency": "once daily",   "time": ["17:00"]},
+        {"name": "Aspirin",      "dose": "81mg",  "frequency": "once daily",   "time": ["08:00"]},
+        {"name": "Amiodarone",   "dose": "200mg", "frequency": "twice daily",  "time": ["08:00", "20:00"]}
+      ],
+      "comorbidities": ["Atrial Fibrillation", "Hypertension"],
+      "active_scenario": "afib_detected",
+      "phone": "+1-555-0187",
+      "emergency_contact": "Carlos Delgado (husband) — +1-555-0188",
+      "home_location": { "lat": 37.7849, "lng": -122.4094, "address": "520 Castro Street, San Francisco, CA" }
+    },
+    {
+      "id": "marcus-webb",
+      "name": "Marcus Webb",
+      "age": 71,
+      "photo_initials": "MW",
+      "surgery_type": "Implantable Cardioverter Defibrillator (ICD)",
+      "surgery_date": "2025-03-12",
+      "days_post_op": 13,
+      "ejection_fraction": 28,
+      "attending": "Dr. Kavitha Rao",
+      "next_appointment": "2025-03-26T09:00:00",
+      "medications": [
+        {"name": "Sacubitril/Valsartan", "dose": "49/51mg", "frequency": "twice daily", "time": ["08:00", "20:00"]},
+        {"name": "Carvedilol",  "dose": "12.5mg", "frequency": "twice daily", "time": ["08:00", "20:00"]},
+        {"name": "Spironolactone", "dose": "25mg", "frequency": "once daily", "time": ["08:00"]}
+      ],
+      "comorbidities": ["Heart Failure (HFrEF)", "COPD", "Type 2 Diabetes"],
+      "active_scenario": "pre_visit",
+      "phone": "+1-555-0211",
+      "emergency_contact": "Linda Webb (daughter) — +1-555-0212",
+      "home_location": { "lat": 37.7649, "lng": -122.4394, "address": "3301 Noe Valley Drive, San Francisco, CA" }
+    },
+    {
+      "id": "sarah-kim",
+      "name": "Sarah Kim",
+      "age": 48,
+      "photo_initials": "SK",
+      "surgery_type": "Mitral Valve Repair",
+      "surgery_date": "2025-02-23",
+      "days_post_op": 30,
+      "ejection_fraction": 62,
+      "attending": "Dr. Kavitha Rao",
+      "next_appointment": "2025-04-05T11:00:00",
+      "medications": [
+        {"name": "Aspirin",      "dose": "81mg",  "frequency": "once daily",   "time": ["08:00"]},
+        {"name": "Metoprolol",   "dose": "12.5mg","frequency": "once daily",   "time": ["08:00"]}
+      ],
+      "comorbidities": [],
+      "active_scenario": "full_recovery",
+      "phone": "+1-555-0334",
+      "emergency_contact": "James Kim (husband) — +1-555-0335",
+      "home_location": { "lat": 37.7949, "lng": -122.3994, "address": "711 Mission Bay Blvd, San Francisco, CA" }
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+ATRIAL FIBRILLATION IN POST-CARDIAC SURGERY PATIENTS — Detection & Management
+
+EPIDEMIOLOGY
+Post-operative atrial fibrillation (POAF) is the most common complication following cardiac surgery:
+- CABG: 20-40% incidence
+- Valve surgery: 40-60% incidence
+- Combined CABG + valve: up to 65% incidence
+Peak onset: 48-72 hours post-operatively (range: Day 1 to Day 10)
+
+DETECTION CRITERIA
+ECG Findings:
+- Irregularly irregular RR intervals (no two consecutive beats the same)
+- Absence of discrete P waves; replaced by fibrillatory baseline
+- Variable ventricular rate (typically 100-180 bpm if uncontrolled)
+- Narrow QRS unless aberrant conduction or bundle branch block present
+
+Remote Monitoring Indicators:
+- Heart Rate Variability (HRV) dropping acutely below 15ms (from baseline)
+- Sudden heart rate increase to 110-160 bpm with irregular pattern
+- AFib risk score (ML-derived) >70% warrants immediate ECG confirmation
+- Patient-reported symptoms: palpitations, "heart fluttering," sudden dyspnea
+
+CLASSIFICATION:
+- Paroxysmal AF: Episodes <7 days, terminate spontaneously
+- Persistent AF: >7 days, requires cardioversion
+- Long-standing Persistent: >1 year
+- Permanent: Cardioversion not planned/possible
+
+MANAGEMENT PROTOCOL FOR POAF
+
+Rate Control (First-line for hemodynamically stable):
+- Metoprolol IV 2.5-5mg q5min (max 15mg) → oral transition
+- Target resting heart rate: 60-100 bpm
+- Digoxin may be added for rate control in HF with reduced EF
+
+Rhythm Control:
+- Amiodarone: Loading 150mg IV over 10 min, then 1mg/min × 6h, then 0.5mg/min × 18h
+- Electrical cardioversion if hemodynamically unstable (DC cardioversion 200J biphasic)
+
+Anticoagulation:
+- If AF persists >48 hours: anticoagulation required to prevent thromboembolism
+- CHA₂DS₂-VASc score ≥2: anticoagulate (warfarin, apixaban, rivaroxaban)
+- TEE-guided cardioversion if anticoagulation status uncertain
+
+THROMBOEMBOLIC RISK:
+- POAF increases stroke risk 2-3× compared to non-AF post-surgical patients
+- Left atrial thrombus can form within 24-48 hours of sustained AF
+- Bridge therapy with heparin required until therapeutic anticoagulation achieved
+
+WHEN TO ESCALATE (IMMEDIATE PHYSICIAN REVIEW REQUIRED):
+- HR >150 bpm with AF pattern
+- Hemodynamic instability (systolic BP <90mmHg)
+- New neurological symptoms (TIA/stroke concern)
+- SpO₂ <90% in setting of rapid AF
+- AF persisting >6 hours despite rate control
+
+PATIENT EDUCATION KEY POINTS:
+- Irregular heartbeat sensation is common post-surgery — report immediately
+- Do not stop anticoagulation without physician guidance
+- Know the difference between expected recovery fatigue and palpitation symptoms
+- Emergency signs: fainting, severe shortness of breath, chest pain with rapid heartbeat → call 911

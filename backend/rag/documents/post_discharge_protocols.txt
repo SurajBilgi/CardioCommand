@@ -1,0 +1,87 @@
+AHA POST-CARDIAC SURGERY DISCHARGE PROTOCOLS
+
+AMERICAN HEART ASSOCIATION — POST-SURGICAL DISCHARGE CARE STANDARDS (2024 Update)
+
+MEDICATION ADHERENCE PROTOCOL
+
+Core Post-CABG Medication Regimen:
+1. Aspirin 81mg daily — antiplatelet for graft patency; NEVER discontinue without physician approval
+2. Beta-blocker (metoprolol/carvedilol) — heart rate/BP control; reduces MACE risk 25-35%
+3. ACE inhibitor/ARB (lisinopril/valsartan) — cardiac remodeling prevention, essential if EF <40%
+4. Statin (atorvastatin/rosuvastatin) — plaque stabilization, mandatory regardless of baseline LDL
+5. Anticoagulation (warfarin/NOAC) — only if AF, mechanical valve, or thromboembolic indication
+
+Medication Non-Adherence Risk Factors (screen at discharge):
+- Lives alone / limited social support
+- Cognitive impairment or literacy barriers
+- Cost barriers (>4 medications, out-of-pocket burden)
+- History of medication non-adherence
+- Complex dosing schedules
+
+WOUND CARE STANDARDS
+
+Sternal Wound:
+- Keep dry for 48 hours post-discharge
+- Clean with mild soap, pat dry; no soaking (baths) until 4-6 weeks
+- Apply no creams/ointments unless prescribed
+- Cover with clean dressing until wound fully sealed (~10-14 days)
+
+Leg Wound (SVG harvest site):
+- Compression stockings for 4-6 weeks to reduce edema
+- Expect bruising and numbness — normal
+- Watch for: increased redness, warmth, drainage, fever >38°C — report immediately
+
+ACTIVITY RESTRICTIONS BY WEEK
+
+Week 1 (Days 1-7):
+- Walking: 5-10 min, 3× daily; increase as tolerated
+- No lifting >5 lbs
+- No driving (reaction time impaired, cannot turn wheel with sternal restriction)
+- No sexual activity
+
+Week 2 (Days 8-14):
+- Walking: 10-20 min, 3× daily; target 2,000 steps/day
+- Light household tasks (cooking, light cleaning)
+- Still no driving, no lifting >5-10 lbs
+- Stairs: permitted with handrail support
+
+Week 3-4 (Days 15-28):
+- Walking: 20-30 min daily; 3,000-4,000 steps target
+- May resume driving if approved by surgeon (typically 4-6 weeks post-op)
+- Return to sedentary/desk work may be possible at Week 3-4 with physician clearance
+
+Week 5-8:
+- Cardiac rehabilitation referral — shown to reduce 30-day readmission by 30-50%
+- Progressive aerobic activity
+- Return to physically demanding work: 6-12 weeks depending on job requirements
+
+DIETARY GUIDELINES POST-CARDIAC SURGERY
+- Sodium: <2,000mg/day (especially if EF <40% or heart failure history)
+- Fluid restriction: 1.5-2L/day if EF <35%
+- Heart-healthy diet: Mediterranean or DASH pattern
+- Alcohol: Maximum 1 drink/day for women, 2/day for men; none in first 30 days
+- Potassium monitoring if on ACE inhibitor + diuretic (hyperkalemia risk)
+
+FOLLOW-UP CARE SCHEDULE
+- Surgeon wound check: 7-10 days post-discharge
+- Cardiologist: 2-4 weeks post-discharge
+- Primary care: 4-6 weeks post-discharge
+- Cardiac rehabilitation: Referral within 21 days of discharge (Class I AHA recommendation)
+- Lab work: BMP (potassium, creatinine, BUN) at 1-2 weeks if on diuretics or ACE inhibitor
+
+EMERGENCY ACTION CRITERIA (Call 911 Immediately):
+- Chest pain/pressure/tightness that doesn't resolve in 15 minutes
+- Sudden severe shortness of breath at rest
+- Loss of consciousness or near-syncope
+- Signs of stroke: face drooping, arm weakness, speech difficulty (FAST protocol)
+- Wound dehiscence (sternal wound opening)
+- Fever >39°C (102°F) + wound redness/drainage
+
+CONTACT CARE TEAM SAME DAY (Not Emergency, But Urgent):
+- Fever 38-39°C (100.4-102°F)
+- Increased wound drainage or redness
+- Ankle swelling worse than yesterday
+- Heart rate >100 for >2 hours
+- SpO₂ <94% (if patient has oximeter)
+- Unusual fatigue, can't complete activities they could yesterday
+- Missed 2+ medication doses

@@ -1,0 +1,93 @@
+COMMON POST-CARDIAC SURGERY MEDICATIONS — Interactions & Monitoring Guide
+
+METOPROLOL SUCCINATE (Beta-1 Selective Beta-blocker)
+Mechanism: Reduces heart rate and myocardial oxygen demand; suppresses post-op arrhythmias
+Standard Dose: 25-200mg once daily (extended-release) or 12.5-100mg twice daily (tartrate)
+Key Monitoring:
+- Heart rate: Hold if <50 bpm (alert prescriber)
+- Blood pressure: Hold if systolic <90 mmHg
+- Symptoms: Fatigue, cold extremities, sexual dysfunction, depression
+
+Critical Interactions:
+- Amiodarone + Metoprolol: Additive bradycardia + AV block risk — monitor HR closely
+- Verapamil/Diltiazem + Metoprolol: AVOID combination — severe bradycardia risk
+- NSAIDs (ibuprofen): May blunt antihypertensive effect
+
+Patient Warning Signs: Sudden increase in fatigue, dizziness on standing (orthostatic hypotension), HR persistently <50
+
+LISINOPRIL (ACE Inhibitor)
+Mechanism: Prevents cardiac remodeling; reduces afterload; essential if EF <40%
+Standard Dose: 2.5-40mg once daily
+Key Monitoring:
+- Potassium: Risk of hyperkalemia, especially with spironolactone and CKD — check at 1-2 weeks
+- Creatinine: May rise 10-20% initially — acceptable; >30% rise requires dose reduction
+- Cough: Dry persistent cough in 10-15% of patients; switch to ARB if intolerable
+
+Critical Interactions:
+- Spironolactone/Eplerenone + ACE inhibitor: Hyperkalemia risk — K+ monitoring essential
+- NSAIDs: Reduce effectiveness, increase nephrotoxicity risk
+- Potassium supplements: Additive hyperkalemia
+
+Do Not Use With: Bilateral renal artery stenosis, prior angioedema with ACE inhibitor, pregnancy
+
+WARFARIN (Vitamin K Antagonist)
+Mechanism: Prevents thromboembolism in AF, mechanical valves, and VTE
+Target INR: 2.0-3.0 (AF/VTE); 2.5-3.5 (mechanical mitral valve)
+Key Monitoring:
+- INR: Weekly until stable, then monthly
+- Diet consistency: Vitamin K-containing foods (leafy greens) affect INR — consistency more important than avoidance
+
+Critical Interactions (INR RAISING — bleeding risk):
+- Amiodarone: Potent warfarin potentiator — reduce warfarin dose by 30-50% when starting amiodarone
+- Antibiotics (azithromycin, fluoroquinolones): May raise INR significantly
+- Aspirin + Warfarin: Increased bleeding risk — monitor for GI bleeding signs
+
+Critical Interactions (INR LOWERING — clot risk):
+- Rifampin, carbamazepine: Major inducers — avoid if possible
+- St. John's Wort: Significant INR reduction — avoid
+
+Patient Warning Signs: Unusual bruising, blood in urine/stool, nosebleed lasting >10 min, unusual headache
+
+AMIODARONE (Class III Antiarrhythmic)
+Mechanism: Broad antiarrhythmic — used for AF rate/rhythm control and VT prevention
+Dose: 200mg twice daily maintenance (loading typically done inpatient)
+Key Monitoring:
+- Thyroid function (TSH) every 6 months — hyper and hypothyroidism risk
+- Pulmonary function annually — pulmonary toxicity (rare but serious)
+- Liver enzymes at baseline and every 6 months
+- Ophthalmology annually (corneal microdeposits — usually asymptomatic)
+- QTc interval monitoring — can prolong QT → Torsades risk
+
+Critical Interactions:
+- Warfarin + Amiodarone: Major — amiodarone inhibits warfarin metabolism; reduce warfarin dose 30-50%
+- Digoxin + Amiodarone: Digoxin levels double — reduce digoxin dose by 50%
+- Statins + Amiodarone: Myopathy risk — avoid simvastatin >20mg; prefer rosuvastatin/pravastatin
+
+FUROSEMIDE (Loop Diuretic)
+Mechanism: Reduces fluid overload; essential for heart failure, post-op edema
+Standard Dose: 20-80mg once or twice daily
+Key Monitoring:
+- Daily weights — weight gain >2 lbs overnight or 5 lbs in 5 days → call prescriber
+- Potassium: Hypokalemia risk — supplement often required
+- Creatinine: Volume depletion can worsen kidney function
+
+Patient Warning Signs: Dizziness on standing, muscle cramps (hypokalemia), excessive thirst, dark urine (dehydration)
+
+SACUBITRIL/VALSARTAN (ARNI — Entresto)
+Mechanism: Combined neprilysin inhibitor + ARB; significantly reduces HF mortality in HFrEF
+Standard Dose: 24/26mg to 97/103mg twice daily (titrate from lowest dose)
+Key Monitoring:
+- Similar to ACE inhibitor: Potassium, creatinine, blood pressure
+- Never combine with ACE inhibitor (angioedema risk) — 36-hour washout required
+- Blood pressure: Hypotension common at initiation
+
+ASPIRIN (Antiplatelet)
+Post-CABG: Indefinite aspirin 81mg/day — improves 10-year graft patency
+Do NOT stop unless surgeon/cardiologist instructs — risk of in-stent thrombosis
+
+MEDICATION TIMING PEARLS:
+- ACE inhibitors and ARBs: Take at consistent time; if causing cough, take at bedtime
+- Beta-blockers: Take with food; do NOT abruptly discontinue (rebound hypertension/tachycardia)
+- Warfarin: Consistent time daily (evening preferred for INR monitoring)
+- Statins: Evening preferred (cholesterol synthesis peaks overnight)
+- Diuretics: Morning dosing to avoid nocturia

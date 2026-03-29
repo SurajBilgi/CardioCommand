@@ -1,0 +1,87 @@
+CARDIAC SURGERY READMISSION RISK FACTORS — Evidence-Based Clinical Reference
+
+30-DAY READMISSION RATES: CONTEXT
+- National average 30-day readmission rate post-cardiac surgery: 12-17%
+- Leading causes: Heart failure decompensation (31%), infection (18%), arrhythmia (15%), respiratory (12%)
+- Estimated cost per readmission: $15,000-$25,000
+- CMS penalizes hospitals with excess readmissions under HRRP (Hospital Readmissions Reduction Program)
+
+HIGH-RISK FACTOR IDENTIFICATION
+
+CARDIAC RISK FACTORS:
+Reduced Ejection Fraction (EF <35%):
+- 2.8× increased readmission risk
+- Mechanism: Reduced cardiac reserve; minimal tolerance for volume changes, arrhythmia, infection
+- Management: Strict fluid monitoring, sodium restriction, daily weights, HF specialist follow-up
+
+Prior Heart Failure Hospitalization:
+- 3.2× increased readmission risk
+- Each prior HF admission increases subsequent admission probability by 40%
+- Management: Specialized HF clinic transition program; nurse-led phone follow-up within 72 hours
+
+Atrial Fibrillation History:
+- 1.8× increased readmission risk
+- Post-surgical AF that reverts may recur; persistent AF risk of stroke/embolism
+- Management: Anticoagulation protocols, heart rate monitoring, rhythm surveillance
+
+METABOLIC RISK FACTORS:
+Type 2 Diabetes:
+- 1.6× increased readmission risk
+- Mechanisms: Impaired wound healing, immune dysfunction, hyperglycemia-induced inflammation, autonomic neuropathy
+- Management: Perioperative glycemic control (target 140-180 mg/dL inpatient); HbA1c optimization outpatient
+- Monitoring: Daily glucose checks if on insulin; foot exam at each visit
+
+Chronic Kidney Disease (CKD):
+- Stage 3 (GFR 30-59): 1.9× readmission risk
+- Stage 4 (GFR 15-29): 3.1× readmission risk
+- Mechanisms: Fluid retention impairs HF management; ACE inhibitor dosing limited; contrast nephropathy risk
+- Monitoring: BMP weekly for 4 weeks post-discharge; watch for rising creatinine (>25% baseline)
+
+Hypertension with End-Organ Damage:
+- Poorly controlled HTN elevates afterload → graft stress, HF decompensation
+- Target: BP <130/80 in first 30 days post-CABG
+
+SOCIAL/BEHAVIORAL RISK FACTORS:
+Living Alone / Limited Social Support:
+- 2.4× readmission risk (strongest social risk factor)
+- Mechanism: Delayed symptom recognition; inability to manage medications independently; falls
+- Intervention: Check-in call within 48 hours of discharge; home health referral; emergency contact engagement
+
+Medication Non-Adherence:
+- 1.9× readmission risk; accounts for ~10% of preventable readmissions
+- Risk factors for non-adherence: polypharmacy (>5 medications), cost barriers, cognitive impairment, complex schedules
+- Intervention: Pill organizers, medication reconciliation, pharmacy counseling at discharge
+
+Low Health Literacy:
+- Patients with low literacy are 2× more likely to be readmitted
+- Cannot interpret symptom instructions; misunderstands medication labels
+- Intervention: Teach-back method at discharge; picture-based instructions; Cora-style plain-English AI companion
+
+Substance Use (Tobacco, Alcohol):
+- Active smoking: 1.8× readmission risk post-CABG (graft patency reduced 30% in smokers)
+- Alcohol misuse: Risk of arrhythmia, medication non-adherence, falls
+
+PHYSIOLOGIC EARLY WARNING INDICATORS (Remote Monitoring Thresholds):
+
+HIGH SENSITIVITY TRIGGERS (recommend same-day outreach if 2+ present):
+- Resting HR >95 bpm for >12 hours
+- SpO₂ <94% for >4 hours
+- HRV <20ms sustained
+- Weight gain >2 lbs in 24 hours (if monitored)
+- Activity <500 steps/day × 2 consecutive days
+- Sleep quality <40% for 3 consecutive nights
+
+CRITICAL TRIGGERS (immediate physician escalation):
+- HR >130 bpm or irregular rhythm pattern consistent with AF
+- SpO₂ <90%
+- Patient-reported chest pain or severe dyspnea
+- Syncope or near-syncope
+- Wound dehiscence or purulent drainage
+
+INTERVENTIONS SHOWN TO REDUCE READMISSION:
+1. Transitional care nurse call within 72 hours: 20-30% readmission reduction
+2. Cardiac rehabilitation enrollment: 30-50% reduction in 30-day readmission
+3. Remote physiologic monitoring (wearable + AI alert): 25-38% reduction (emerging evidence)
+4. Patient-reported outcomes tools: 15% reduction when actioned promptly
+5. Medication reconciliation at discharge: 14% reduction in medication errors
+6. Early outpatient follow-up (within 7 days): 18% reduction vs. 14-day follow-up
