@@ -121,7 +121,10 @@ export const fetchWhoopStatus = (patientId) =>
   withFallback(() => api.get(`/integrations/whoop/latest/${patientId}`).then(r => r.data), MOCK_WHOOP_STATUS)
 
 export const syncWhoop = (patientId) =>
-  api.post(`/integrations/whoop/sync/${patientId}`).then(r => r.data)
+  api.post(`/integrations/whoop/sync/${patientId}`).then(r => r.data).catch(error => {
+    const detail = error?.response?.data?.detail
+    throw new Error(detail || 'WHOOP sync failed')
+  })
 
 export const getWhoopConnectUrl = (patientId) =>
   `${BASE_URL}/integrations/whoop/connect?patient_id=${encodeURIComponent(patientId)}`

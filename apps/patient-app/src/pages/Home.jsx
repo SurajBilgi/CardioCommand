@@ -566,6 +566,7 @@ export default function Home() {
   const [showVoiceCall, setShowVoiceCall] = useState(false)
   const [showWearableOptions, setShowWearableOptions] = useState(false)
   const [wearableMessage, setWearableMessage] = useState('')
+  const [wearableMessageTone, setWearableMessageTone] = useState('neutral')
   const [whoopStatus, setWhoopStatus] = useState(null)
   const [whoopSyncing, setWhoopSyncing] = useState(false)
   const [showStreakCalendar, setShowStreakCalendar] = useState(false)
@@ -596,12 +597,18 @@ export default function Home() {
 
   useEffect(() => {
     const wearableError = searchParams.get('wearable_error')
+    const wearableDetail = searchParams.get('wearable_detail')
     const whoopConnectedParam = searchParams.get('whoop')
 
     if (wearableError === 'whoop_not_ready') {
       setWearableMessage('WHOOP connection is not ready on this deployment yet. You can still use the app and connect later.')
+      setWearableMessageTone('warning')
+    } else if (wearableError) {
+      setWearableMessage(wearableDetail || 'We could not connect your wearable yet. Please try again.')
+      setWearableMessageTone('error')
     } else if (whoopConnectedParam === 'connected') {
       setWearableMessage('Your wearable was connected successfully.')
+      setWearableMessageTone('success')
       fetchWhoopStatus(PATIENT_ID).then(setWhoopStatus).catch(() => {})
     }
   }, [searchParams])
@@ -667,10 +674,15 @@ export default function Home() {
   async function handleWhoopSync() {
     try {
       setWhoopSyncing(true)
+      setWearableMessage('')
       const next = await syncWhoop(PATIENT_ID)
       setWhoopStatus(next)
+      setWearableMessage('Wearable synced successfully.')
+      setWearableMessageTone('success')
     } catch (error) {
       console.error(error)
+      setWearableMessage(error.message || 'WHOOP sync failed. Please try again.')
+      setWearableMessageTone('error')
     } finally {
       setWhoopSyncing(false)
     }
@@ -684,6 +696,7 @@ export default function Home() {
   function handleAppleHealthConnect() {
     setShowWearableOptions(false)
     setWearableMessage('Apple Health connection needs a small iPhone companion app. For this demo, WHOOP is the live wearable path.')
+    setWearableMessageTone('warning')
   }
   const streakCalendar = useMemo(
     () => buildStreakCalendar(new Date().getFullYear(), streakDays, rehabWeek, BEST_STREAK),
@@ -943,11 +956,25 @@ export default function Home() {
       <div className="px-4 pt-4 space-y-4">
         {wearableMessage && (
           <motion.div
-            className="bg-bg-surface rounded-2xl p-4 border border-bg-border shadow-sm"
+            className={clsx(
+              'rounded-2xl p-4 border shadow-sm',
+              wearableMessageTone === 'error' && 'bg-red-50 border-red-200',
+              wearableMessageTone === 'warning' && 'bg-amber-50 border-amber-200',
+              wearableMessageTone === 'success' && 'bg-emerald-50 border-emerald-200',
+              wearableMessageTone === 'neutral' && 'bg-bg-surface border-bg-border'
+            )}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <p className="font-ui text-sm text-txt-secondary">{wearableMessage}</p>
+            <p className={clsx(
+              'font-ui text-sm',
+              wearableMessageTone === 'error' && 'text-red-700',
+              wearableMessageTone === 'warning' && 'text-amber-700',
+              wearableMessageTone === 'success' && 'text-emerald-700',
+              wearableMessageTone === 'neutral' && 'text-txt-secondary'
+            )}>
+              {wearableMessage}
+            </p>
           </motion.div>
         )}
 
